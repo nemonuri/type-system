@@ -9,16 +9,40 @@
 
 -/
 
-inductive FωType where
-  | var : Nat → FωType
-  | con : String → FωType
-  | arrow : FωType → FωType → FωType
-  | app : FωType → FωType → FωType
 
-def isArrow (fw: FωType) : Bool :=
-  match fw with
-  | .arrow _ _ => .true
-  | _ => .false
+inductive FωType : (rank: Nat) → Type 0 where
+  | star : Nat → FωType 0
+  | arrow :
+      ( leftRank: Nat ) → ( lhs: FωType leftRank )
+    → ( rightRank: Nat ) → ( rhs: FωType rightRank )
+    → FωType (rightRank + 1)
+  | app :
+      ( funcRank: Nat ) → ( funcRank > 0 ) → ( func: FωType funcRank )
+    → ( argRank: Nat ) → ( arg: FωType argRank )
+    → FωType (funcRank - 1)
+
+
+
+
+
+
+/-
+inductive FωStar where
+  | mk : Nat → FωStar
+
+mutual
+
+  inductive FωArrow where
+    | mk : FωType → FωType → FωArrow
+
+  inductive FωType where
+    | star : FωStar → FωType
+    | arrow : FωArrow → FωType
+    | app : FωArrow → FωType → FωType
+
+
+end
+-/
 
 /-!
 
