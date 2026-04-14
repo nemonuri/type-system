@@ -13,14 +13,23 @@ inductive Kind where
   | star : Kind
   | arrow : Kind → Kind → Kind
 
-inductive NamedKind : Kind → Type 0 where
-  | star : String → NamedKind .star
-  | arrow : (pk: Kind) → (pnk: NamedKind pk) → (qk: Kind) → (qnk: NamedKind qk) → NamedKind (.arrow pk qk)
+/-- Canon Fω Type -/
+inductive Canon : Kind → Type 0 where
+  | star : String → Canon .star
+  | arrow : (pk: Kind) → (pnk: Canon pk) → (qk: Kind) → (qnk: Canon qk) → Canon (.arrow pk qk)
 
-inductive CanonType : Kind → Type 0 where
-  | var : String → CanonType .star
-  | lam : (pk: Kind) → (qk: Kind) → (lct: CanonType pk) → (qct: CanonType qk) → CanonType (.arrow pk qk)
+/-- Surface Fω Type -/
+inductive Surface : (k: Kind) → Canon k → Type 0 where
+  | star : (s: String) → Surface (Kind.star) (Canon.star s)
+  | arrow :
+      (pk: Kind) → (pnk: Canon pk) →
+      (qk: Kind) → (qnk: Canon qk) →
+      (lct: Canon pk → Surface qk qnk) →
+      Surface (Kind.arrow pk qk) (Canon.arrow pk pnk qk qnk)
 
+
+
+/-
 inductive App (pk: Kind) (qk: Kind) (lct: CanonType (.arrow pk qk)) (pct: CanonType pk) where
   | mk : App pk qk lct pct
 
@@ -29,7 +38,7 @@ def eval
   (app: App pk qk lct pct)
   : CanonType qk :=
   sorry
-
+-/
 
 /-!
 
