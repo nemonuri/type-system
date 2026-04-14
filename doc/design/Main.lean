@@ -24,21 +24,25 @@ inductive Surface : (k: Kind) → Canon k → Type 0 where
   | arrow :
       (pk: Kind) → (pnk: Canon pk) →
       (qk: Kind) → (qnk: Canon qk) →
-      (lct: Canon pk → Surface qk qnk) →
+      (arrow: Canon pk → Surface qk qnk) →
       Surface (Kind.arrow pk qk) (Canon.arrow pk pnk qk qnk)
 
+set_option linter.unusedVariables false
+def toCanon {k: Kind} {canon: Canon k} (st: Surface k canon) : Canon k := canon
+set_option linter.unusedVariables true
+
+inductive App
+  (pk: Kind) (pnk: Canon pk) (qk: Kind) (qnk: Canon qk)
+  (fn: Surface (Kind.arrow pk qk) (Canon.arrow pk pnk qk qnk))
+  (arg: Surface pk pnk)
+where
+  | mk : App pk pnk qk qnk fn arg
 
 
-/-
-inductive App (pk: Kind) (qk: Kind) (lct: CanonType (.arrow pk qk)) (pct: CanonType pk) where
-  | mk : App pk qk lct pct
+def eval {pk pnk qk qnk fn arg} (app: App pk pnk qk qnk fn arg) : Surface qk qnk :=
+  match fn with
+  | .arrow _ _ _ _ arrow => arrow (toCanon arg)
 
-def eval
-  (pk: Kind) (qk: Kind) (lct: CanonType (.arrow pk qk)) (pct: CanonType pk)
-  (app: App pk qk lct pct)
-  : CanonType qk :=
-  sorry
--/
 
 /-!
 
