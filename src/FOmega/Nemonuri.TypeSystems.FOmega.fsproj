@@ -5,6 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Primitives.fs" />
-    <Compile Include="Surface.fs" />
+    <Compile Include="Surface.fs" /><Compile Include="Evaluation.fs" />
   </ItemGroup>
 </Project>

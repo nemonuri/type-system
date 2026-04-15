@@ -25,14 +25,22 @@ module Surfaces = begin
         abstract member Apply: 'pc -> 'qs
     end
 
-    //let toCanon (s: #ISurface<'kind, 'canon>) = Unchecked.defaultof<'canon>
-
 
     type App<'pk, 'pc, 'qk, 'qc, 'fn, 'arg
                 when 'pk :> K.IKind and 'pc :> C.ICanon<'pk>
                 and 'qk :> K.IKind and 'qc :> C.ICanon<'qk>
                 and 'fn :> ISurface<K.Arrow<'pk, 'qk>, C.Arrow<'pk, 'pc, 'qk, 'qc>>
                 and 'arg :> ISurface<'pk, 'pc>> = struct end
+
+    let inline apply'<'pk, 'pc, 'qk, 'qc, 'qs, 'fn
+                        when 'pk :> K.IKind and 'pc :> C.ICanon<'pk>
+                        and 'qk :> K.IKind and 'qc :> C.ICanon<'qk>
+                        and 'qs :> ISurface<'qk, 'qc>
+                        and 'fn :> ISurface<K.Arrow<'pk, 'qk>, C.Arrow<'pk, 'pc, 'qk, 'qc>>
+                        and ('fn or 'pc) : (static member Apply: 'pc -> 'qs)> 
+                (fn: 'fn) (pc: 'pc) =
+        ((^fn or ^pc) : (static member Apply: 'pc -> 'qs) pc) 
+
 
 end
 
