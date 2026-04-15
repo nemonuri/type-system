@@ -1,7 +1,10 @@
 <Project>
-  <!-- See https://aka.ms/dotnet/msbuild/customize for more details on customizing your build -->
   <PropertyGroup>
+    <RepoRootPath>$(MSBuildThisFileDirectory)</RepoRootPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(RepoRootPath)artifacts/</ArtifactsPath>
+    <SrcRootPath>$(RepoRootPath)src/</SrcRootPath>
 
-
+    <RepoTargetFrameworks>netstandard2.0;netstandard2.1;net8.0;net10.0</RepoTargetFrameworks>
   </PropertyGroup>
 </Project>
