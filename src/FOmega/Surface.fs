@@ -1,12 +1,10 @@
 ﻿namespace Nemonuri.TypeSystems.FOmega
 
 open Nemonuri.TypeSystems.FOmega.Primitives
-
+module K = Kinds
+module C = Canons
 
 module Surfaces = begin
-
-    module K = Kinds
-    module C = Canons
 
     type ISurface<'kind, 'canon 
                     when 'kind :> K.IKind
@@ -31,16 +29,6 @@ module Surfaces = begin
                 and 'qk :> K.IKind and 'qc :> C.ICanon<'qk>
                 and 'fn :> ISurface<K.Arrow<'pk, 'qk>, C.Arrow<'pk, 'pc, 'qk, 'qc>>
                 and 'arg :> ISurface<'pk, 'pc>> = struct end
-
-    let inline apply'<'pk, 'pc, 'qk, 'qc, 'qs, 'fn
-                        when 'pk :> K.IKind and 'pc :> C.ICanon<'pk>
-                        and 'qk :> K.IKind and 'qc :> C.ICanon<'qk>
-                        and 'qs :> ISurface<'qk, 'qc>
-                        and 'fn :> ISurface<K.Arrow<'pk, 'qk>, C.Arrow<'pk, 'pc, 'qk, 'qc>>
-                        and ('fn or 'pc) : (static member Apply: 'pc -> 'qs)> 
-                (fn: 'fn) (pc: 'pc) =
-        ((^fn or ^pc) : (static member Apply: 'pc -> 'qs) pc) 
-
 
 end
 
