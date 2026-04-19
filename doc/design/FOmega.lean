@@ -12,11 +12,13 @@
 inductive Kind where
   | star : Kind
   | arrow : Kind → Kind → Kind
+  deriving Repr, DecidableEq, BEq
 
 /-- Canon Fω Type -/
 inductive Canon : Kind → Type 0 where
   | star : String → Canon .star
   | arrow : (pk: Kind) → (pc: Canon pk) → (qk: Kind) → (qc: Canon qk) → Canon (.arrow pk qk)
+  deriving Repr, DecidableEq, BEq
 
 /-- Surface Fω Type -/
 inductive Surface : (k: Kind) → Canon k → Type 0 where
