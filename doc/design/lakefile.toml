@@ -1,10 +1,13 @@
 name = "FOmega"
 version = "0.1.0"
-defaultTargets = ["FOmega"]
+defaultTargets = ["DotNet"]
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
 
 [[lean_lib]]
-name = "FOmega"
+name = "DotNet"
+
+[[lean_lib]]
+name = "FOmegaMain"
