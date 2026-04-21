@@ -26,7 +26,7 @@ inductive MaybeGeneric (α: Type) [HasArityDef α] where
   | generic : { a: α // HasArityDef.arityDef a > 0 } → MaybeGeneric α
   | nonGeneric : { a: α // HasArityDef.arityDef a = 0 } → MaybeGeneric α
 
-def generic? {α: Type} [HasArityDef α] (a: α) : MaybeGeneric α :=
+def toMaybeGeneric {α: Type} [HasArityDef α] (a: α) : MaybeGeneric α :=
   let p := HasArityDef.arityDef a > 0
   Decidable.byCases
     (fun h1 : p => MaybeGeneric.generic ⟨a, h1⟩)
@@ -57,7 +57,7 @@ def typeDef (arity: Nat) (typeCon: TypeCon arity) : TypeDef :=
 
 @[simp]
 theorem typeDef_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : pred.typeDef = (pred.apply last).typeDef := by
+  : (pred.apply last).typeDef = pred.typeDef := by
   rfl
 
 def maxLength (arity: Nat) (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
@@ -68,7 +68,7 @@ instance {arity: Nat} : HasArityDef (TypeCon arity) where
 
 @[simp]
 theorem maxLength_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : pred.maxLength = (pred.apply last).maxLength := by
+  : (pred.apply last).maxLength = pred.maxLength := by
   rfl
 
 def length (arity: Nat) (typeCon: TypeCon arity) : Nat :=
@@ -81,7 +81,7 @@ theorem length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by
 
 @[simp]
 theorem length_app (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : pred.length + 1 = (pred.apply last).length := by
+  : (pred.apply last).length = pred.length + 1 := by
   rfl
 
 def arityPlusLength (arity: Nat) (typeCon: TypeCon arity) : Nat := arity + typeCon.length
@@ -96,29 +96,33 @@ theorem arityPlusLength_is_invariant
   (predArity: Pos)
   (pred : { a: TypeCon predArity // HasArityDef.arityDef a > 0 })
   (last: TypeSpec)
-  : pred.val.arityPlusLength = (pred.val.apply last).arityPlusLength := by
-  rw [arityPlusLength_unfold pred.val]
-  rw [arityPlusLength_unfold (pred.val.apply last)]
-  have lemma1 : pred.val.length + 1 = (pred.val.apply last).length := by
-    rw [pred.val.length_app]
+  : (pred.val.apply last).arityPlusLength = pred.val.arityPlusLength := by
+  simp
   omega
-
-
-
-
-end TypeCon
---theorem TypeCon.arity_plus_length_is_invariant__case_of_init
---  (typeDef: TypeDef) (last: TypeSpec)
+/-
+  let tcL := pred.val;
+  let tcR := tcL.apply last;
+  rw [arityPlusLength_unfold tcL]
+  rw [arityPlusLength_unfold tcR]
+  have lemma1 : tcL.length + 1 = tcR.length := by
+    rw [tcL.length_app]
+  omega
+-/
 
 /-
-theorem TypeCon.arity_plus_length_is_invariant
-  (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : pred.arity_plus_length = (pred.apply last).arity_plus_length := by
-  omega
+theorem length_le_maxLength (arity: Nat) (typeCon: TypeCon arity)
+  : typeCon.length <= typeCon.maxLength := by
+  let mg := toMaybeGeneric typeCon
+  cases mg with
+  | generic g =>
+      have lemma1 : typeCon.maxLength = typeCon.typeDef.arity := by rfl
+      rw [lemma1]
+  | nonGeneric ng => sorry
+-/
 
-theorem TypeCon.length_app (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : (TypeCon.app predArity pred last).length = pred.length + 1 := by
-  omega
+end TypeCon
+
+/-
 
 theorem TypeCon.length_le_maxLength (arity: Nat) (typeCon: TypeCon arity)
   : typeCon.length <= typeCon.maxLength := by
