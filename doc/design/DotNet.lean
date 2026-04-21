@@ -31,12 +31,7 @@ def generic? {α: Type} [HasArityDef α] (a: α) : MaybeGeneric α :=
   Decidable.byCases
     (fun h1 : p => MaybeGeneric.generic ⟨a, h1⟩)
     (fun h2 : ¬p => MaybeGeneric.nonGeneric ⟨a, by omega⟩)
-/-
-  if p then
-    MaybeGeneric.generic ⟨a, p⟩
-  else
-    MaybeGeneric.nonGeneric a
--/
+
 
 mutual
   inductive TypeCon : Nat → Type 0 where
@@ -50,63 +45,68 @@ mutual
     deriving Hashable
 end
 
-#check TypeSpec.rec
+namespace TypeCon
 
-#check TypeCon.rec
-#check TypeCon.casesOn
-#check TypeCon.noConfusion
-#check TypeCon.noConfusionType
-
-
-def TypeCon.apply {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec) : TypeCon (predArity-1) :=
+def apply {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec) : TypeCon (predArity-1) :=
   TypeCon.app predArity pred last
 
-def TypeCon.typeDef (arity: Nat) (typeCon: TypeCon arity) : TypeDef :=
+def typeDef (arity: Nat) (typeCon: TypeCon arity) : TypeDef :=
   match typeCon with
   | init td => td
   | app _ typeCon0 _ => typeCon0.typeDef
 
 @[simp]
-theorem TypeCon.typeDef_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
+theorem typeDef_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
   : pred.typeDef = (pred.apply last).typeDef := by
   rfl
 
-def TypeCon.maxLength (arity: Nat) (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
+def maxLength (arity: Nat) (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
 
-abbrev PosTypeCon (arity: Nat) := { tc: TypeCon arity // tc.maxLength > 0 }
+instance {arity: Nat} : HasArityDef (TypeCon arity) where
+  arityDef tc := tc.maxLength
 
 
 @[simp]
-theorem TypeCon.maxLength_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
+theorem maxLength_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
   : pred.maxLength = (pred.apply last).maxLength := by
   rfl
 
-def TypeCon.length (arity: Nat) (typeCon: TypeCon arity) : Nat :=
+def length (arity: Nat) (typeCon: TypeCon arity) : Nat :=
   match typeCon with
   | init _ => 0
   | app _ pred _ => pred.length + 1
 
 @[simp]
-theorem TypeCon.length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by rfl
+theorem length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by rfl
 
 @[simp]
-theorem TypeCon.length_app (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
+theorem length_app (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
   : pred.length + 1 = (pred.apply last).length := by
   rfl
 
-def TypeCon.arity_plus_length (arity: Nat) (typeCon: TypeCon arity) : Nat := arity + typeCon.length
+def arityPlusLength (arity: Nat) (typeCon: TypeCon arity) : Nat := arity + typeCon.length
 
-namespace Lemma
-namespace ArityPlusLengthIsInvariant
+@[simp]
+theorem arityPlusLength_unfold {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.arityPlusLength = arity + typeCon.length := by
+  rfl
 
-theorem case_of_init_aux (typeDef: TypeDef) (last: TypeSpec) (_: typeDef.arity > 0)
-  : (TypeCon.init typeDef).arity_plus_length = ((TypeCon.init typeDef).apply last).arity_plus_length := by
-  simp
+@[simp]
+theorem arityPlusLength_is_invariant
+  (predArity: Pos)
+  (pred : { a: TypeCon predArity // HasArityDef.arityDef a > 0 })
+  (last: TypeSpec)
+  : pred.val.arityPlusLength = (pred.val.apply last).arityPlusLength := by
+  rw [arityPlusLength_unfold pred.val]
+  rw [arityPlusLength_unfold (pred.val.apply last)]
+  have lemma1 : pred.val.length + 1 = (pred.val.apply last).length := by
+    rw [pred.val.length_app]
+  omega
 
 
-end ArityPlusLengthIsInvariant
-end Lemma
 
+
+end TypeCon
 --theorem TypeCon.arity_plus_length_is_invariant__case_of_init
 --  (typeDef: TypeDef) (last: TypeSpec)
 
