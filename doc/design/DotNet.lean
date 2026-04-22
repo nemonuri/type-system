@@ -42,7 +42,7 @@ def toMaybeGeneric {α: Type} [HasArityDef α] (a: α) : MaybeGeneric α :=
 mutual
   inductive TypeCon : Nat → Type 0 where
     | init : (typeDef: TypeDef) → TypeCon typeDef.arity
-    | app : (predArity: Pos) → (pred: TypeCon predArity) → (last: TypeSpec) → TypeCon (predArity-1)
+    | app : {predArity: Pos} → (pred: TypeCon predArity) → (last: TypeSpec) → TypeCon (predArity-1)
     deriving Hashable
 
   inductive TypeSpec where
@@ -53,60 +53,58 @@ end
 
 namespace TypeCon
 
-abbrev apply {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec) : TypeCon (predArity-1) :=
-  TypeCon.app predArity pred last
 
-def typeDef (arity: Nat) (typeCon: TypeCon arity) : TypeDef :=
+def typeDef {arity: Nat} (typeCon: TypeCon arity) : TypeDef :=
   match typeCon with
   | init td => td
-  | app _ typeCon0 _ => typeCon0.typeDef
+  | app typeCon0 _ => typeCon0.typeDef
 
 @[simp]
-theorem typeDef_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.apply last).typeDef = pred.typeDef := by
+theorem typeDef_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).typeDef = pred.typeDef := by
   rfl
 
-def maxLength (arity: Nat) (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
+def maxLength {arity: Nat} (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
 
 instance {arity: Nat} : HasArityDef (TypeCon arity) where
   arityDef tc := tc.maxLength
 
 
 @[simp]
-theorem maxLength_is_invariant (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.apply last).maxLength = pred.maxLength := by
+theorem maxLength_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).maxLength = pred.maxLength := by
   rfl
 
-def length (arity: Nat) (typeCon: TypeCon arity) : Nat :=
+def length {arity: Nat} (typeCon: TypeCon arity) : Nat :=
   match typeCon with
   | init _ => 0
-  | app _ pred _ => pred.length + 1
+  | app pred _ => pred.length + 1
 
 @[simp]
 theorem length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by rfl
 
 @[simp]
-theorem length_app (predArity: Pos) (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.apply last).length = pred.length + 1 := by
+theorem length_app {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).length = pred.length + 1 := by
   rfl
 
-def arityPlusLength (arity: Nat) (typeCon: TypeCon arity) : Nat := arity + typeCon.length
+def arityPlusLength {arity: Nat} (typeCon: TypeCon arity) : Nat := arity + typeCon.length
 
 @[simp]
 theorem arityPlusLength_is_invariant
-  (predArity: Pos)
+  {predArity: Pos}
   (pred : TypeCon predArity)
   (last: TypeSpec)
-  : (pred.apply last).arityPlusLength = pred.arityPlusLength := by
+  : (pred.app last).arityPlusLength = pred.arityPlusLength := by
   unfold arityPlusLength
   simp
   omega
 
 theorem arityPlusLength_init_eq_maxLength
-  (arity: Nat) (typeCon: TypeCon arity) (refiner: typeCon matches init _)
+  {arity: Nat} (typeCon: TypeCon arity) (refiner: typeCon matches init _)
   : typeCon.arityPlusLength = typeCon.maxLength := by
   cases typeCon with
-  | app _ _ _ => contradiction
+  | app _ _ => contradiction
   | init td =>
       unfold arityPlusLength
       unfold maxLength
@@ -115,33 +113,33 @@ theorem arityPlusLength_init_eq_maxLength
 
 @[simp]
 theorem arityPlusLength_eq_maxLength
-  (arity: Nat) (typeCon: TypeCon arity)
+  {arity: Nat} (typeCon: TypeCon arity)
   : typeCon.arityPlusLength = typeCon.maxLength := by
   cases typeCon with
   | init td => simp [arityPlusLength_init_eq_maxLength]
-  | app predArity pred last =>
+  | app pred last =>
       simp
-      have lemma1 : pred.arityPlusLength = pred.maxLength := arityPlusLength_eq_maxLength predArity pred
+      have lemma1 : pred.arityPlusLength = pred.maxLength := pred.arityPlusLength_eq_maxLength
       exact lemma1
 
 theorem arity_le_maxLength
-  (arity: Nat) (typeCon: TypeCon arity)
+  {arity: Nat} (typeCon: TypeCon arity)
   : arity ≤ typeCon.maxLength := by
   have lemma1 := typeCon.arityPlusLength_eq_maxLength
   unfold arityPlusLength at lemma1
   omega
 
 theorem length_le_maxLength
-  (arity: Nat) (typeCon: TypeCon arity)
+  {arity: Nat} (typeCon: TypeCon arity)
   : typeCon.length ≤ typeCon.maxLength := by
   have lemma1 := typeCon.arityPlusLength_eq_maxLength
   unfold arityPlusLength at lemma1
   omega
 
-private def toList_aux (arity: Nat) (typeCon: TypeCon arity) : List TypeSpec :=
+private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
   match typeCon with
   | init td => []
-  | app predArity pred last =>
+  | app pred last =>
       let acc := pred.toList_aux;
       last::acc
 
