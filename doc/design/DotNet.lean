@@ -102,7 +102,6 @@ theorem arityPlusLength_is_invariant
   simp
   omega
 
-@[simp]
 theorem arityPlusLength_init_eq_maxLength
   (arity: Nat) (typeCon: TypeCon arity) (refiner: typeCon matches init _)
   : typeCon.arityPlusLength = typeCon.maxLength := by
@@ -119,52 +118,35 @@ theorem arityPlusLength_eq_maxLength
   (arity: Nat) (typeCon: TypeCon arity)
   : typeCon.arityPlusLength = typeCon.maxLength := by
   cases typeCon with
-  | init td => simp
+  | init td => simp [arityPlusLength_init_eq_maxLength]
   | app predArity pred last =>
       simp
       have lemma1 : pred.arityPlusLength = pred.maxLength := arityPlusLength_eq_maxLength predArity pred
       exact lemma1
 
-
-/-
-theorem arityPlusLength_eq_maxLength
+theorem arity_le_maxLength
   (arity: Nat) (typeCon: TypeCon arity)
-  : typeCon.arityPlusLength = typeCon.maxLength := by
-  cases typeCon with
-  | init td =>
-      unfold maxLength
-      simp
-      rfl
-  | app predArity pred last =>
-      unfold maxLength
-      rw [arityPlusLength_is_invariant predArity pred last]
-      simp
-      unfold
+  : arity ≤ typeCon.maxLength := by
+  have lemma1 := typeCon.arityPlusLength_eq_maxLength
+  unfold arityPlusLength at lemma1
+  omega
 
-theorem nonGeneric_typeCon_is_init
-  (arity: Nat) (typeCon: NonGeneric (TypeCon arity)) : ( typeCon.val matches init .. ) := by
-  cases typeCon.val with
-  | init td => simp
-  | app predArity pred last =>
-      let typeConProp := typeCon.property;
-
-theorem arityPlusLength_eq_maxLength
+theorem length_le_maxLength
   (arity: Nat) (typeCon: TypeCon arity)
-  : typeCon.arityPlusLength = typeCon.maxLength := by
-  have lemma1 : HasArityDef.arityDef typeCon = typeCon.maxLength := by rfl;
-  cases toMaybeGeneric typeCon with
-  | nonGeneric ng =>
-      simp
+  : typeCon.length ≤ typeCon.maxLength := by
+  have lemma1 := typeCon.arityPlusLength_eq_maxLength
+  unfold arityPlusLength at lemma1
+  omega
 
-theorem length_le_maxLength (arity: Nat) (typeCon: TypeCon arity)
-  : typeCon.length <= typeCon.maxLength := by
-  let mg := toMaybeGeneric typeCon
-  cases mg with
-  | generic g =>
-      have lemma1 : typeCon.maxLength = typeCon.typeDef.arity := by rfl
-      rw [lemma1]
-  | nonGeneric ng => sorry
--/
+private def toList_aux (arity: Nat) (typeCon: TypeCon arity) : List TypeSpec :=
+  match typeCon with
+  | init td => []
+  | app predArity pred last =>
+      let acc := pred.toList_aux;
+      last::acc
+
+def toList (typeCon: TypeCon 0) : List TypeSpec := typeCon.toList_aux
+
 
 end TypeCon
 
