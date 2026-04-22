@@ -143,7 +143,41 @@ private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
       let acc := pred.toList_aux;
       last::acc
 
-def toList (typeCon: TypeCon 0) : List TypeSpec := typeCon.toList_aux
+def toList (typeCon: TypeCon 0) : List TypeSpec := typeCon.toList_aux.reverse
+
+private theorem toList_aux_length_eq_length
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.toList_aux.length = typeCon.length := by
+  match typeCon with
+  | init td =>
+      simp only [length_init]
+      rfl
+  | app pred last =>
+      have lemma1 := pred.toList_aux_length_eq_length
+      have lemma2 : (pred.app last).toList_aux = (last :: pred.toList_aux) := by rfl
+      simp [lemma2]
+      exact lemma1
+
+@[simp]
+theorem toList_length_eq_maxLength (typeCon: TypeCon 0) : typeCon.toList.length = typeCon.maxLength := by
+  unfold toList
+  simp [toList_aux_length_eq_length]
+  have lemma1 := typeCon.arityPlusLength_eq_maxLength |> Eq.symm
+  rw [lemma1]
+  unfold arityPlusLength
+  omega
+
+def toVector (typeCon: TypeCon 0) : Vector TypeSpec (typeCon.typeDef.arity) :=
+  let result := typeCon.toList.toArray.toVector
+  let fromT := typeCon.toList.toArray.size
+  let toT := typeCon.typeDef.arity
+  have lemma1 : fromT = toT := by
+    unfold fromT toT
+    simp
+    unfold maxLength
+    rfl
+  have lemma2 : Vector TypeSpec fromT = Vector TypeSpec toT := by simp [lemma1]
+  cast lemma2 result
 
 
 end TypeCon
