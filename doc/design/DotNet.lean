@@ -178,6 +178,10 @@ def TypeSpec.eq (ts1 ts2: TypeSpec) : Bool :=
 mutual
 
   def TypeCon.isEqv (tc1 tc2: TypeCon 0) : Bool :=
+    match (tc1, tc2) with
+    | (.init .., .app ..) | (.app .., .init ..) => false
+
+/-
     let p := tc1.maxLength = tc2.maxLength
     Decidable.byCases
       (fun h1: p =>
@@ -186,6 +190,7 @@ mutual
         v2.isEqv tc1.toVector TypeSpec.isEqv
       )
       (fun _: ¬p => false)
+-/
 
   def TypeSpec.isEqv (ts1 ts2: TypeSpec) : Bool :=
     match (ts1, ts2) with
