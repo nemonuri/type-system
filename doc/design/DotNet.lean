@@ -144,15 +144,13 @@ theorem toList_length_eq_maxLength (typeCon: TypeCon 0) : typeCon.toList.length 
   unfold arityPlusLength
   omega
 
-def toVector (typeCon: TypeCon 0) : Vector TypeSpec (typeCon.typeDef.arity) :=
+def toVector (typeCon: TypeCon 0) : Vector TypeSpec (typeCon.maxLength) :=
   let result := typeCon.toList.toArray.toVector
   let fromT := typeCon.toList.toArray.size
-  let toT := typeCon.typeDef.arity
+  let toT := typeCon.maxLength
   have lemma1 : fromT = toT := by
     unfold fromT toT
     simp
-    unfold maxLength
-    rfl
   have lemma2 : Vector TypeSpec fromT = Vector TypeSpec toT := by simp [lemma1]
   cast lemma2 result
 
@@ -176,6 +174,28 @@ def TypeSpec.eq (ts1 ts2: TypeSpec) : Bool :=
   match (tc1, tc2) with
   | (TypeCon.init td1, TypeCon.init td2) => .false
 -/
+
+mutual
+
+  def TypeCon.isEqv (tc1 tc2: TypeCon 0) : Bool :=
+    let p := tc1.maxLength = tc2.maxLength
+    Decidable.byCases
+      (fun h1: p =>
+        have lemma1 : Vector TypeSpec tc2.maxLength = Vector TypeSpec tc1.maxLength := by rw [h1];
+        let v2 := tc2.toVector |> cast lemma1
+        v2.isEqv tc1.toVector TypeSpec.isEqv
+      )
+      (fun _: ¬p => false)
+
+  def TypeSpec.isEqv (ts1 ts2: TypeSpec) : Bool :=
+    match (ts1, ts2) with
+    | (.var, .con _) | (.con _, .var) => false
+    | (.var, .var) => true
+    | (.con tc1, .con tc2) => tc1.isEqv tc2
+
+
+end
+
 
 end DotNet
 
