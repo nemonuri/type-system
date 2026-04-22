@@ -1,5 +1,7 @@
 module
 
+public section
+
 namespace DotNet
 
 structure TypeDef where
@@ -201,3 +203,5 @@ def TypeSpec.eq (ts1 ts2: TypeSpec) : Bool :=
 -/
 
 end DotNet
+
+end -- public section
