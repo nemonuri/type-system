@@ -7,7 +7,7 @@ namespace DotNet
 structure TypeDef where
   name : String
   arity : Nat
-  deriving BEq, Hashable
+  deriving DecidableEq, BEq, Hashable
 
 abbrev Pos := { x : Nat // 0 < x }
 
@@ -16,29 +16,6 @@ instance : BEq Pos where
 
 instance : Hashable Pos where
   hash p := hash p.val
-
-
-class HasArityDef (α: Type) where
-  arityDef : α → Nat
-
-instance : HasArityDef TypeDef where
-  arityDef td := td.arity
-
-
-abbrev Generic (α: Type) [HasArityDef α] := { a: α // HasArityDef.arityDef a > 0 }
-
-abbrev NonGeneric (α: Type) [HasArityDef α] := { a: α // HasArityDef.arityDef a = 0 }
-
-
-inductive MaybeGeneric (α: Type) [HasArityDef α] where
-  | generic : (Generic α) → MaybeGeneric α
-  | nonGeneric : (NonGeneric α) → MaybeGeneric α
-
-def toMaybeGeneric {α: Type} [HasArityDef α] (a: α) : MaybeGeneric α :=
-  let p := HasArityDef.arityDef a > 0
-  Decidable.byCases
-    (fun h1 : p => MaybeGeneric.generic ⟨a, h1⟩)
-    (fun h2 : ¬p => MaybeGeneric.nonGeneric ⟨a, by omega⟩)
 
 
 mutual
@@ -68,8 +45,6 @@ theorem typeDef_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: T
 
 def maxLength {arity: Nat} (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
 
-instance {arity: Nat} : HasArityDef (TypeCon arity) where
-  arityDef tc := tc.maxLength
 
 
 @[simp]
