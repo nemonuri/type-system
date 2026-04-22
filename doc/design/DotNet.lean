@@ -113,6 +113,77 @@ theorem length_le_maxLength
   unfold arityPlusLength at lemma1
   omega
 
+
+abbrev NonGeneric (arity: Nat) := { typeCon: TypeCon arity // typeCon.maxLength = 0 }
+
+namespace NonGeneric
+
+def split {arity: Nat} (typeCon: TypeCon arity)
+  : Sum (NonGeneric arity) { tc: TypeCon arity // tc.maxLength ≠ 0 } :=
+  let p := typeCon.maxLength = 0
+  Decidable.byCases
+    (fun h1: p => Sum.inl ⟨typeCon, h1⟩)
+    (fun h2: ¬p => Sum.inr ⟨typeCon, h2⟩)
+
+@[simp]
+theorem arity_eq_zero
+  {arity: Nat} (nonGeneric: NonGeneric arity)
+  : arity = 0 := by
+  have lemma1 := nonGeneric.val.arity_le_maxLength
+  omega
+
+@[simp]
+theorem eq_zero
+  {arity: Nat} (nonGeneric: NonGeneric arity)
+  : NonGeneric arity = NonGeneric 0 := by
+  rw [nonGeneric.arity_eq_zero]
+
+def toZero {arity: Nat} (nonGeneric: NonGeneric arity) : NonGeneric 0 :=
+  cast nonGeneric.eq_zero nonGeneric
+
+@[simp]
+theorem length_eq_zero (nonGeneric: NonGeneric 0) : nonGeneric.val.length = 0 := by
+  have lemma1 := nonGeneric.val.length_le_maxLength
+  omega
+
+
+/-
+theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val matches app ..) := by
+  let tc := nonGeneric.val
+  let typeDef := tc.typeDef
+  simp
+  match tc with
+  | init td =>
+      have lemma1 : typeDef = td := by rfl
+
+  | app pred last =>
+      have lemma1 :=
+-/
+
+      --have lemma2 : (pred.app last).maxLength = 0 := by
+      --  have lemma2_1 := maxLength_is_invariant pred last
+
+
+
+
+
+      --have lemma2 :=  (pred.app last).arity_eq_zero
+
+
+
+
+
+
+/-
+theorem maxLength_eq_zero_implies_not_app
+  {arity: Nat} (typeCon: TypeCon arity) (maxLengthEqZero: typeCon.maxLength = 0)
+  : ¬(typeCon matches app ..) := by
+  have lemma1 : typeCon.length = 0 := by apply typeCon.maxLength_eq_zero_implies_length_eq_zero; assumption
+-/
+
+end NonGeneric
+
+
 private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
   match typeCon with
   | init td => []
@@ -178,8 +249,15 @@ def TypeSpec.eq (ts1 ts2: TypeSpec) : Bool :=
 mutual
 
   def TypeCon.isEqv (tc1 tc2: TypeCon 0) : Bool :=
-    match (tc1, tc2) with
-    | (.init .., .app ..) | (.app .., .init ..) => false
+    open TypeCon in
+    let s1 := NonGeneric.split tc1
+    let s2 := NonGeneric.split tc2
+    match (s1, s2) with
+    | (.inl _, .inr _) | (.inr _, .inl _) => false
+    | (.inl ng1, .inl ng2) => ng1.val.typeDef == ng2.val.typeDef
+    | (.inr g1, .inr g2) =>
+    match (g1.val, g2.val) with
+    | (init .., app ..) | (app .., init ..) => false
 
 /-
     let p := tc1.maxLength = tc2.maxLength
