@@ -150,24 +150,6 @@ def get (typeCon: ArityZero) (i: Fin typeCon.maxLength) : TypeSpec :=
     omega
   typeCon.getLast (Fin.mk revIndex lemma2)
 
-private def isEqvAux
-  (tc1 tc2: ArityZero) (typeSpecEq: TypeSpec → TypeSpec → Bool)
-  (i: Fin tc1.maxLength) (maxLengthAreEqual: tc1.maxLength = tc2.maxLength)
-  : Bool :=
-  let .mk index isLt := i
-  let elem1 := tc1.get i
-  have isLt2 : index < tc2.maxLength := by
-    simp [maxLengthAreEqual] at isLt
-    exact isLt
-  let elem2 := tc2.get ⟨index, isLt2⟩
-  if typeSpecEq elem1 elem2 = .false then .false else
-  let nextIndex := index + 1
-  let nextIsLt := nextIndex < tc1.maxLength
-  Decidable.byCases
-    (fun h1: nextIsLt => isEqvAux tc1 tc2 typeSpecEq ⟨nextIndex, h1⟩ maxLengthAreEqual)
-    (fun h2: ¬nextIsLt => .true)
-  termination_by tc1.maxLength - (i.val + 1)
-
 end ArityZero
 
 abbrev NonGeneric (arity: Nat) := { typeCon: TypeCon arity // typeCon.maxLength = 0 }
@@ -269,17 +251,36 @@ end TypeCon
 
 mutual
 
-  def TypeCon.ArityZero.isEqv (tc1 tc2: TypeCon.ArityZero) : Bool := -- (typeSpecEq: TypeSpec → TypeSpec → Bool)
-    let typeSpecEq := TypeSpec.isEqv
+  private def TypeCon.ArityZero.isEqvAux
+    (tc1 tc2: TypeCon.ArityZero) --(typeSpecEq: TypeSpec → TypeSpec → Bool)
+    (i: Fin tc1.maxLength) (maxLengthAreEqual: tc1.maxLength = tc2.maxLength)
+    : Bool :=
+    open TypeCon in
+    let .mk index isLt := i
+    let elem1 := tc1.get i
+    have isLt2 : index < tc2.maxLength := by
+      simp [maxLengthAreEqual] at isLt
+      exact isLt
+    let elem2 := tc2.get ⟨index, isLt2⟩
+    if TypeSpec.isEqv elem1 elem2 = .false then .false else
+    let nextIndex := index + 1
+    let nextIsLt := nextIndex < tc1.maxLength
+    Decidable.byCases
+      (fun h1: nextIsLt => TypeCon.ArityZero.isEqvAux tc1 tc2 ⟨nextIndex, h1⟩ maxLengthAreEqual)
+      (fun h2: ¬nextIsLt => .true)
+    termination_by (tc1.maxLength - (i.val + 1), sizeOf tc1)
+
+  def TypeCon.ArityZero.isEqv (tc1 tc2: TypeCon.ArityZero) : Bool :=
     open TypeCon in
     let maxLengthAreEqual := tc1.maxLength = tc2.maxLength
     let caseT (proof: maxLengthAreEqual) : Bool :=
       if tc1.typeDef != tc2.typeDef then .false else
       let isLt := 0 < tc1.maxLength
       Decidable.byCases
-        (fun hT: isLt => ArityZero.isEqvAux tc1 tc2 typeSpecEq ⟨0,hT⟩ proof)
+        (fun hT: isLt => TypeCon.ArityZero.isEqvAux tc1 tc2 ⟨0,hT⟩ proof)
         (fun _: ¬isLt => .true)
     Decidable.byCases caseT (fun _: ¬maxLengthAreEqual => .false)
+    termination_by (0, sizeOf tc1)
 
   def TypeSpec.isEqv (ts1 ts2: TypeSpec) : Bool :=
     match (ts1, ts2) with
