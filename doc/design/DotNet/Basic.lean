@@ -1,0 +1,251 @@
+module
+
+public section
+
+namespace DotNet
+
+structure TypeDef where
+  name : String
+  arity : Nat
+  deriving DecidableEq, BEq, Hashable
+
+abbrev Pos := { x : Nat // 0 < x }
+
+instance : BEq Pos where
+  beq p1 p2 := p1.val == p2.val
+
+instance : Hashable Pos where
+  hash p := hash p.val
+
+
+mutual
+  inductive TypeCon : Nat → Type 0 where
+    | init : (typeDef: TypeDef) → TypeCon typeDef.arity
+    | app : {predArity: Pos} → (pred: TypeCon predArity) → (last: TypeSpec) → TypeCon (predArity-1)
+
+  inductive TypeSpec where
+    | var : TypeSpec
+    | con : (TypeCon 0) → TypeSpec
+end
+
+namespace TypeCon
+
+def typeDef {arity: Nat} (typeCon: TypeCon arity) : TypeDef :=
+  match typeCon with
+  | init td => td
+  | app typeCon0 _ => typeCon0.typeDef
+
+@[simp]
+theorem typeDef_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).typeDef = pred.typeDef := by
+  rfl
+
+def maxLength {arity: Nat} (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
+
+
+
+@[simp]
+theorem maxLength_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).maxLength = pred.maxLength := by
+  rfl
+
+def length {arity: Nat} (typeCon: TypeCon arity) : Nat :=
+  match typeCon with
+  | init _ => 0
+  | app pred _ => pred.length + 1
+
+@[simp]
+theorem length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by rfl
+
+@[simp]
+theorem length_app {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
+  : (pred.app last).length = pred.length + 1 := by
+  rfl
+
+def arityPlusLength {arity: Nat} (typeCon: TypeCon arity) : Nat := arity + typeCon.length
+
+@[simp]
+theorem arityPlusLength_is_invariant
+  {predArity: Pos}
+  (pred : TypeCon predArity)
+  (last: TypeSpec)
+  : (pred.app last).arityPlusLength = pred.arityPlusLength := by
+  unfold arityPlusLength
+  simp
+  omega
+
+theorem arityPlusLength_init_eq_maxLength
+  {arity: Nat} (typeCon: TypeCon arity) (refiner: typeCon matches init _)
+  : typeCon.arityPlusLength = typeCon.maxLength := by
+  cases typeCon with
+  | app _ _ => contradiction
+  | init td =>
+      unfold arityPlusLength
+      unfold maxLength
+      simp
+      rfl
+
+@[simp]
+theorem arityPlusLength_eq_maxLength
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.arityPlusLength = typeCon.maxLength := by
+  cases typeCon with
+  | init td => simp [arityPlusLength_init_eq_maxLength]
+  | app pred last =>
+      simp
+      have lemma1 : pred.arityPlusLength = pred.maxLength := pred.arityPlusLength_eq_maxLength
+      exact lemma1
+
+theorem maxLength_eq_arity_plus_length
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.maxLength = arity + typeCon.length := by
+  rw [typeCon.arityPlusLength_eq_maxLength |> Eq.symm]
+  rfl
+
+theorem arity_le_maxLength
+  {arity: Nat} (typeCon: TypeCon arity)
+  : arity ≤ typeCon.maxLength := by
+  have lemma1 := typeCon.arityPlusLength_eq_maxLength
+  unfold arityPlusLength at lemma1
+  omega
+
+theorem length_le_maxLength
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.length ≤ typeCon.maxLength := by
+  have lemma1 := typeCon.arityPlusLength_eq_maxLength
+  unfold arityPlusLength at lemma1
+  omega
+
+def getLast
+  {arity: Nat} (typeCon: TypeCon arity) (i: Fin typeCon.length)
+  : TypeSpec :=
+  let .app pred last := typeCon
+  let .mk index isLt := i
+  match index with
+  | 0 => last
+  | i2 + 1 =>
+      have lemma1 : i2 < pred.length := by
+        simp at isLt
+        exact isLt
+      pred.getLast (Fin.mk i2 lemma1)
+
+
+abbrev ArityZero := TypeCon 0
+
+namespace ArityZero
+
+@[simp]
+theorem length_eq_maxLength (typeCon: ArityZero) : typeCon.length = typeCon.maxLength := by
+  simp [maxLength_eq_arity_plus_length]
+
+def get (typeCon: ArityZero) (i: Fin typeCon.maxLength) : TypeSpec :=
+  let .mk index isLt := i
+  have lemma1 : typeCon.maxLength > 0 := by omega
+  let revIndex := typeCon.maxLength - 1 - index
+  have lemma2 : revIndex < typeCon.length := by
+    simp
+    omega
+  typeCon.getLast (Fin.mk revIndex lemma2)
+
+end ArityZero
+
+abbrev NonGeneric (arity: Nat) := { typeCon: TypeCon arity // typeCon.maxLength = 0 }
+
+namespace NonGeneric
+
+def split {arity: Nat} (typeCon: TypeCon arity)
+  : Sum (NonGeneric arity) { tc: TypeCon arity // tc.maxLength ≠ 0 } :=
+  let p := typeCon.maxLength = 0
+  Decidable.byCases
+    (fun h1: p => Sum.inl ⟨typeCon, h1⟩)
+    (fun h2: ¬p => Sum.inr ⟨typeCon, h2⟩)
+
+@[simp]
+theorem arity_eq_zero
+  {arity: Nat} (nonGeneric: NonGeneric arity)
+  : arity = 0 := by
+  have lemma1 := nonGeneric.val.arity_le_maxLength
+  omega
+
+@[simp]
+theorem is_ArityZero
+  {arity: Nat} (nonGeneric: NonGeneric arity)
+  : NonGeneric arity = NonGeneric 0 := by
+  rw [nonGeneric.arity_eq_zero]
+
+def toArityZero {arity: Nat} (nonGeneric: NonGeneric arity) : NonGeneric 0 :=
+  cast nonGeneric.is_ArityZero nonGeneric
+
+@[simp]
+theorem length_eq_zero (nonGeneric: NonGeneric 0) : nonGeneric.val.length = 0 := by
+  simp [ArityZero.length_eq_maxLength]
+  exact nonGeneric.property
+
+theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val matches app ..) := by
+  have lemma1 := nonGeneric.arity_eq_zero
+  let .mk typeCon isNonGeneric := nonGeneric
+  cases typeCon with
+  | init td => simp
+  | app pred last =>
+      simp only [maxLength_eq_arity_plus_length] at isNonGeneric
+      simp only [lemma1] at isNonGeneric
+      simp only [length_app] at isNonGeneric
+      contradiction -- ¬isNonGeneric : 0 + (pred.length + 1) ≠ 0
+
+/-
+theorem maxLength_eq_zero_implies_not_app
+  {arity: Nat} (typeCon: TypeCon arity) (maxLengthEqZero: typeCon.maxLength = 0)
+  : ¬(typeCon matches app ..) := by
+  have lemma1 : typeCon.length = 0 := by apply typeCon.maxLength_eq_zero_implies_length_eq_zero; assumption
+-/
+
+end NonGeneric
+
+
+
+private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
+  match typeCon with
+  | init td => []
+  | app pred last =>
+      let acc := pred.toList_aux;
+      last::acc
+
+private theorem toList_aux_length_eq_length
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.toList_aux.length = typeCon.length := by
+  match typeCon with
+  | init td =>
+      simp only [length_init]
+      rfl
+  | app pred last =>
+      have lemma1 := pred.toList_aux_length_eq_length
+      have lemma2 : (pred.app last).toList_aux = (last :: pred.toList_aux) := by rfl
+      simp [lemma2]
+      exact lemma1
+
+namespace ArityZero
+
+def toList (typeCon: ArityZero) : List TypeSpec := typeCon.toList_aux.reverse
+
+@[simp]
+theorem toList_length_eq_maxLength (typeCon: ArityZero) : typeCon.toList.length = typeCon.maxLength := by
+  unfold toList
+  simp [toList_aux_length_eq_length]
+
+def toVector (typeCon: ArityZero) : Vector TypeSpec (typeCon.maxLength) :=
+  let result := typeCon.toList.toArray.toVector
+  let fromT := typeCon.toList.toArray.size
+  let toT := typeCon.maxLength
+  have lemma1 : fromT = toT := by
+    unfold fromT toT
+    simp
+  have lemma2 : Vector TypeSpec fromT = Vector TypeSpec toT := by simp [lemma1]
+  cast lemma2 result
+
+end ArityZero
+
+end TypeCon
+
+end DotNet
+
+end -- public section
