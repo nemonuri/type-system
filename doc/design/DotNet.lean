@@ -147,30 +147,17 @@ theorem length_eq_zero (nonGeneric: NonGeneric 0) : nonGeneric.val.length = 0 :=
   omega
 
 
-/-
 theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val matches app ..) := by
-  let tc := nonGeneric.val
-  let typeDef := tc.typeDef
-  simp
-  match tc with
-  | init td =>
-      have lemma1 : typeDef = td := by rfl
-
+  have lemma1 := nonGeneric.arity_eq_zero
+  let .mk typeCon isNonGeneric := nonGeneric
+  cases typeCon with
+  | init td => simp
   | app pred last =>
-      have lemma1 :=
--/
-
-      --have lemma2 : (pred.app last).maxLength = 0 := by
-      --  have lemma2_1 := maxLength_is_invariant pred last
-
-
-
-
-
-      --have lemma2 :=  (pred.app last).arity_eq_zero
-
-
-
+      rewrite [(pred.app last).arityPlusLength_eq_maxLength |> Eq.symm] at isNonGeneric
+      unfold arityPlusLength at isNonGeneric
+      simp only [lemma1] at isNonGeneric
+      simp only [length_app] at isNonGeneric
+      contradiction -- ¬isNonGeneric : 0 + (pred.length + 1) ≠ 0
 
 
 
