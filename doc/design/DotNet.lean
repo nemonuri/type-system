@@ -133,16 +133,50 @@ def getLast
       pred.getLast (Fin.mk i2 lemma1)
 
 
-
 abbrev ArityZero := TypeCon 0
 
 namespace ArityZero
 
-  theorem length_eq_maxLength (typeCon: ArityZero) : typeCon.length = typeCon.maxLength := by
-    simp [maxLength_eq_arity_plus_length]
+@[simp]
+theorem length_eq_maxLength (typeCon: ArityZero) : typeCon.length = typeCon.maxLength := by
+  simp [maxLength_eq_arity_plus_length]
 
-  --def getLast (typeCon: ArityZero) (i: Fin typeCon.length) : TypeSpec :=
-  --  let d :=
+def get (typeCon: ArityZero) (i: Fin typeCon.maxLength) : TypeSpec :=
+  let .mk index isLt := i
+  have lemma1 : typeCon.maxLength > 0 := by omega
+  let revIndex := typeCon.maxLength - 1 - index
+  have lemma2 : revIndex < typeCon.length := by
+    simp
+    omega
+  typeCon.getLast (Fin.mk revIndex lemma2)
+
+private def isEqvAux
+  (tc1 tc2: ArityZero) (typeSpecEq: TypeSpec → TypeSpec → Bool)
+  (i: Fin tc1.maxLength) (maxLengthAreEqual: tc1.maxLength = tc2.maxLength)
+  : Bool :=
+  let .mk index isLt := i
+  let elem1 := tc1.get i
+  have isLt2 : index < tc2.maxLength := by
+    simp [maxLengthAreEqual] at isLt
+    exact isLt
+  let elem2 := tc2.get ⟨index, isLt2⟩
+  if typeSpecEq elem1 elem2 = .false then .false else
+  let nextIndex := index + 1
+  let nextIsLt := nextIndex < tc1.maxLength
+  Decidable.byCases
+    (fun h1: nextIsLt => isEqvAux tc1 tc2 typeSpecEq ⟨nextIndex, h1⟩ maxLengthAreEqual)
+    (fun h2: ¬nextIsLt => .true)
+  termination_by tc1.maxLength - (i.val + 1)
+
+def isEqv (tc1 tc2: ArityZero) (typeSpecEq: TypeSpec → TypeSpec → Bool) : Bool :=
+  let maxLengthAreEqual := tc1.maxLength = tc2.maxLength
+  let caseT (proof: maxLengthAreEqual) : Bool :=
+    if tc1.typeDef != tc2.typeDef then .false else
+    let isLt := 0 < tc1.maxLength
+    Decidable.byCases
+      (fun hT: isLt => isEqvAux tc1 tc2 typeSpecEq ⟨0,hT⟩ proof)
+      (fun _: ¬isLt => .true)
+  Decidable.byCases caseT (fun _: ¬maxLengthAreEqual => .false)
 
 end ArityZero
 
@@ -200,23 +234,6 @@ end NonGeneric
 
 
 
-#print TypeCon.casesOn
-
-namespace ArityZero
-
-  inductive Builder where
-    | init : (typeDef: TypeDef) → (typeDef.arity = 0) → Builder
-    | app : (typeDef: TypeDef) → Vector TypeSpec typeDef.arity → Builder
-
-
-  --def isEqv (typeCon: ArityZero) (typeSpecEq: TypeSpec → TypeSpec → Bool) : Bool :=
-
-
-
-
-end ArityZero
-
-
 private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
   match typeCon with
   | init td => []
@@ -243,10 +260,6 @@ private theorem toList_aux_length_eq_length
 theorem toList_length_eq_maxLength (typeCon: TypeCon 0) : typeCon.toList.length = typeCon.maxLength := by
   unfold toList
   simp [toList_aux_length_eq_length]
-  have lemma1 := typeCon.arityPlusLength_eq_maxLength |> Eq.symm
-  rw [lemma1]
-  unfold arityPlusLength
-  omega
 
 def toVector (typeCon: TypeCon 0) : Vector TypeSpec (typeCon.maxLength) :=
   let result := typeCon.toList.toArray.toVector
