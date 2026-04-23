@@ -99,6 +99,12 @@ theorem arityPlusLength_eq_maxLength
       have lemma1 : pred.arityPlusLength = pred.maxLength := pred.arityPlusLength_eq_maxLength
       exact lemma1
 
+theorem maxLength_eq_arity_plus_length
+  {arity: Nat} (typeCon: TypeCon arity)
+  : typeCon.maxLength = arity + typeCon.length := by
+  rw [typeCon.arityPlusLength_eq_maxLength |> Eq.symm]
+  rfl
+
 theorem arity_le_maxLength
   {arity: Nat} (typeCon: TypeCon arity)
   : arity ≤ typeCon.maxLength := by
@@ -113,6 +119,32 @@ theorem length_le_maxLength
   unfold arityPlusLength at lemma1
   omega
 
+def getLast
+  {arity: Nat} (typeCon: TypeCon arity) (i: Fin typeCon.length)
+  : TypeSpec :=
+  let .app pred last := typeCon
+  let .mk index isLt := i
+  match index with
+  | 0 => last
+  | i2 + 1 =>
+      have lemma1 : i2 < pred.length := by
+        simp at isLt
+        exact isLt
+      pred.getLast (Fin.mk i2 lemma1)
+
+
+
+abbrev ArityZero := TypeCon 0
+
+namespace ArityZero
+
+  theorem length_eq_maxLength (typeCon: ArityZero) : typeCon.length = typeCon.maxLength := by
+    simp [maxLength_eq_arity_plus_length]
+
+  --def getLast (typeCon: ArityZero) (i: Fin typeCon.length) : TypeSpec :=
+  --  let d :=
+
+end ArityZero
 
 abbrev NonGeneric (arity: Nat) := { typeCon: TypeCon arity // typeCon.maxLength = 0 }
 
@@ -133,19 +165,18 @@ theorem arity_eq_zero
   omega
 
 @[simp]
-theorem eq_zero
+theorem is_ArityZero
   {arity: Nat} (nonGeneric: NonGeneric arity)
   : NonGeneric arity = NonGeneric 0 := by
   rw [nonGeneric.arity_eq_zero]
 
-def toZero {arity: Nat} (nonGeneric: NonGeneric arity) : NonGeneric 0 :=
-  cast nonGeneric.eq_zero nonGeneric
+def toArityZero {arity: Nat} (nonGeneric: NonGeneric arity) : NonGeneric 0 :=
+  cast nonGeneric.is_ArityZero nonGeneric
 
 @[simp]
 theorem length_eq_zero (nonGeneric: NonGeneric 0) : nonGeneric.val.length = 0 := by
-  have lemma1 := nonGeneric.val.length_le_maxLength
-  omega
-
+  simp [ArityZero.length_eq_maxLength]
+  exact nonGeneric.property
 
 theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val matches app ..) := by
   have lemma1 := nonGeneric.arity_eq_zero
@@ -153,13 +184,10 @@ theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val 
   cases typeCon with
   | init td => simp
   | app pred last =>
-      rewrite [(pred.app last).arityPlusLength_eq_maxLength |> Eq.symm] at isNonGeneric
-      unfold arityPlusLength at isNonGeneric
+      simp only [maxLength_eq_arity_plus_length] at isNonGeneric
       simp only [lemma1] at isNonGeneric
       simp only [length_app] at isNonGeneric
       contradiction -- ¬isNonGeneric : 0 + (pred.length + 1) ≠ 0
-
-
 
 /-
 theorem maxLength_eq_zero_implies_not_app
@@ -169,6 +197,24 @@ theorem maxLength_eq_zero_implies_not_app
 -/
 
 end NonGeneric
+
+
+
+#print TypeCon.casesOn
+
+namespace ArityZero
+
+  inductive Builder where
+    | init : (typeDef: TypeDef) → (typeDef.arity = 0) → Builder
+    | app : (typeDef: TypeDef) → Vector TypeSpec typeDef.arity → Builder
+
+
+  --def isEqv (typeCon: ArityZero) (typeSpecEq: TypeSpec → TypeSpec → Bool) : Bool :=
+
+
+
+
+end ArityZero
 
 
 private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
@@ -233,20 +279,21 @@ def TypeSpec.eq (ts1 ts2: TypeSpec) : Bool :=
   | (TypeCon.init td1, TypeCon.init td2) => .false
 -/
 
-mutual
 
-  def TypeCon.isEqv (tc1 tc2: TypeCon 0) : Bool :=
-    open TypeCon in
-    let s1 := NonGeneric.split tc1
-    let s2 := NonGeneric.split tc2
-    match (s1, s2) with
-    | (.inl _, .inr _) | (.inr _, .inl _) => false
-    | (.inl ng1, .inl ng2) => ng1.val.typeDef == ng2.val.typeDef
-    | (.inr g1, .inr g2) =>
-    match (g1.val, g2.val) with
-    | (init .., app ..) | (app .., init ..) => false
 
 /-
+mutual
+
+
+  def TypeCon.isEqv (tc1 tc2: TypeCon 0) : Bool :=
+    match
+      (motive := )
+      tc1, tc2
+    with
+    | .init .., .app .. | .app .., .init .. => false
+
+
+
     let p := tc1.maxLength = tc2.maxLength
     Decidable.byCases
       (fun h1: p =>
@@ -255,7 +302,7 @@ mutual
         v2.isEqv tc1.toVector TypeSpec.isEqv
       )
       (fun _: ¬p => false)
--/
+
 
   def TypeSpec.isEqv (ts1 ts2: TypeSpec) : Bool :=
     match (ts1, ts2) with
@@ -265,6 +312,7 @@ mutual
 
 
 end
+-/
 
 
 end DotNet
