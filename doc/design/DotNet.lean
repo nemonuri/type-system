@@ -32,7 +32,6 @@ end
 
 namespace TypeCon
 
-
 def typeDef {arity: Nat} (typeCon: TypeCon arity) : TypeDef :=
   match typeCon with
   | init td => td
@@ -268,7 +267,9 @@ mutual
     Decidable.byCases
       (fun h1: nextIsLt => TypeCon.ArityZero.isEqvAux tc1 tc2 ⟨nextIndex, h1⟩ maxLengthAreEqual)
       (fun h2: ¬nextIsLt => .true)
-    termination_by (tc1.maxLength - (i.val + 1), sizeOf tc1)
+    --termination_by (tc1.maxLength - (i.val + 1), sizeOf tc1)
+    decreasing_by
+      all_goals simp_wf
 
   def TypeCon.ArityZero.isEqv (tc1 tc2: TypeCon.ArityZero) : Bool :=
     open TypeCon in
@@ -280,7 +281,7 @@ mutual
         (fun hT: isLt => TypeCon.ArityZero.isEqvAux tc1 tc2 ⟨0,hT⟩ proof)
         (fun _: ¬isLt => .true)
     Decidable.byCases caseT (fun _: ¬maxLengthAreEqual => .false)
-    termination_by (0, sizeOf tc1)
+    --termination_by (0, sizeOf tc1)
 
   def TypeSpec.isEqv (ts1 ts2: TypeSpec) : Bool :=
     match (ts1, ts2) with
