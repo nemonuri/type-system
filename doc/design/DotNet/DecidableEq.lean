@@ -32,85 +32,23 @@ instance : PartialEquivBEq Pos where
 
 instance : EquivBEq Pos := EquivBEq.mk
 
-/-
-theorem TypeStack.decon_type_eq
-  (rc: Nat) (tst1 tst2: TypeStack rc) := by
-  show tst1 = tst2
--/
 
-#print TypeStack.casesOn
-#print TypeStack.noConfusion
 
-set_option pp.showLetValues true in
 mutual
 
-/-
-  def TypeStack.beq
-    {rc: Nat} (tst1 tst2: TypeStack rc)
-    : Bool :=
-    open TypeStack in
-    let ifTst1Alloc (td1: TypeDef) (proof: tst1 = TypeStack.alloc td1) : Bool :=
+  private def TypeStack.beqAux
+    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
+    match tst1 with
+    | .alloc td1 =>
       match tst2 with
       | .alloc td2 => td1 == td2
       | _ => .false
-    let ifTst1Push
-      (prc1: Pos) (pred1: TypeStack prc1.val) (item1: TypeSpec)
-      (proof: tst1 = pred1.pushAuto item1)
-      : Bool :=
-      match ts2 with
+    | .push prc1 pred1 item1 =>
+      match tst2 with
+      | .alloc _ => .false
       | .push prc2 pred2 item2 =>
-
-
-    match tst1, tst2 with
-    | .alloc td1, .alloc td2 => .true
-
-
-    match
-      (motive := TypeStack rc → TypeStack rc → Bool)
-      tst1, tst2
-    with
-    | .alloc td1, .alloc td2 => td1 == td2
-    | .push prc1 pred1 last1, .push prc2' pred2' last2 =>
-      TypeSpec.beq last1 last2 &&
-      TypeStack.beq pred1 (cast (h := by sorry) pred2')
-    |  _, _ => false
--/
-
-
-/- Can't proof termination...why??
-  private def TypeStack.beqAux
-    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
-    if rc1 ≠ rc2 then .false else
-    match tst1, tst2 with
-    | .alloc td1, .alloc td2 => td1 == td2
-    | .push prc1 pred1 item1, .push prc2 pred2 item2 =>
-      TypeSpec.beq item1 item2 &&
-      TypeStack.beqAux pred1 pred2
-    | _, _ => .false
--/
-
-  private def TypeStack.beqAux
-    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
-    let toIndex {rcN: Nat} (tstN: TypeStack rcN) := rcN
-    let index_eq {rcN: Nat} (tstN: TypeStack rcN) := toIndex tstN = rcN
-    have index_eq_lemma {rcN: Nat} (tstN: TypeStack rcN) : index_eq tstN := by rfl
-    let rc_eq := toIndex tst1 = toIndex tst2
-    let ifReEqTrue (rc_eq_proof: rc_eq) : Bool :=
-      let ifAlloc (td1: TypeDef) (index_eq_proof: index_eq (TypeStack.alloc td1)) : Bool :=
-        match tst2 with
-        | .alloc td2 => td1 == td2
-        | _ => .false
-      let ifPush
-        (prc1: Pos) (pred1: TypeStack prc1.val) (item1: TypeSpec)
-        (index_eq_proof: index_eq (TypeStack.push prc1 pred1 item1))
-        : Bool :=
-        match tst2 with
-        | .alloc _ => .false
-        | .push prc2 pred2 item2 =>
-            TypeSpec.beq item1 item2 &&
-            TypeStack.beqAux pred1 pred2
-      TypeStack.casesOn tst1 ifAlloc ifPush (index_eq_lemma tst1)
-    Decidable.byCases ifReEqTrue (fun _: ¬rc_eq => .false)
+        TypeSpec.beq item1 item2 &&
+        TypeStack.beqAux pred1 pred2
 
   def TypeStack.beq {rc: Nat} (tst1 tst2: TypeStack rc) := TypeStack.beqAux tst1 tst2
 
