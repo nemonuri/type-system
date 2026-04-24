@@ -11,12 +11,6 @@ structure TypeDef where
 
 abbrev Pos := { x : Nat // 0 < x }
 
-instance : BEq Pos where
-  beq p1 p2 := p1.val == p2.val
-
-instance : Hashable Pos where
-  hash p := hash p.val
-
 
 mutual
   inductive TypeStack : (remainedCount: Nat) → Type 0 where

@@ -6,16 +6,34 @@ public section
 
 namespace DotNet
 
-#print Prod.casesOn
+
+instance : BEq Pos where
+  beq p1 p2 := p1.val == p2.val
+
+instance : Hashable Pos where
+  hash p := hash p.val
+
+instance : LawfulHashable Pos where
+  hash_eq p1 p2 h := show hash p1 = hash p2 by
+    simp at h
+    have lemma1 (n: Nat) (p: Pos) (prf: p.val = n) : hash p = hash n := by
+      have lemma1_1 : hash p = hash p.val := by rfl
+      rw [lemma1_1]
+      rw [prf]
+    have lemma2 (p: Pos) := lemma1 p.val p (by rfl)
+    rw [lemma2 p1, lemma2 p2]
+    rw [h]
+
+
 #print TypeStack.casesOn
 
-namespace TypeStack
+--namespace TypeStack.DecidableEq
 
---private def motiveFst
+--private def motive1 (rc: Nat) (_: TypeStack rc) := TypeStack rc
+--theorem decon_type_eq
 
 
-
-end TypeStack
+--end TypeStack.DecidableEq
 
 
 mutual
@@ -24,10 +42,10 @@ mutual
     {rc: Nat} (tst1 tst2: TypeStack rc)
     : Bool :=
     open TypeStack in
-    let rc2' := rc
-    have lemma1 := show TypeStack rc = TypeStack rc2' by rfl
-    let tst2' := cast lemma1 tst2
-    match tst1, tst2' with
+    match
+      (motive := TypeStack rc → TypeStack rc → Bool)
+      tst1, tst2
+    with
     | .alloc td1, .alloc td2 => td1 == td2
     | .push prc1 pred1 last1, .push prc2' pred2' last2 =>
       TypeSpec.beq last1 last2 &&
@@ -99,6 +117,7 @@ mutual
 
 
 end
+
 
 end DotNet
 
