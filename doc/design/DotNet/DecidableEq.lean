@@ -77,9 +77,20 @@ mutual
 -/
 
 
+/- Can't proof termination...why??
+  private def TypeStack.beqAux
+    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
+    if rc1 ≠ rc2 then .false else
+    match tst1, tst2 with
+    | .alloc td1, .alloc td2 => td1 == td2
+    | .push prc1 pred1 item1, .push prc2 pred2 item2 =>
+      TypeSpec.beq item1 item2 &&
+      TypeStack.beqAux pred1 pred2
+    | _, _ => .false
+-/
 
   private def TypeStack.beqAux
-    {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2) : Bool :=
+    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
     let toIndex {rcN: Nat} (tstN: TypeStack rcN) := rcN
     let index_eq {rcN: Nat} (tstN: TypeStack rcN) := toIndex tstN = rcN
     have index_eq_lemma {rcN: Nat} (tstN: TypeStack rcN) : index_eq tstN := by rfl
@@ -102,8 +113,6 @@ mutual
     Decidable.byCases ifReEqTrue (fun _: ¬rc_eq => .false)
 
   def TypeStack.beq {rc: Nat} (tst1 tst2: TypeStack rc) := TypeStack.beqAux tst1 tst2
-
-
 
   def TypeSpec.beq
     (typeSpec1 typeSpec2: TypeSpec)
