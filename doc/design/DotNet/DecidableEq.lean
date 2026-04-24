@@ -24,8 +24,16 @@ instance : LawfulHashable Pos where
     rw [lemma2 p1, lemma2 p2]
     rw [h]
 
+instance : ReflBEq Pos where rfl := by simp
 
-#print TypeStack.casesOn
+instance : PartialEquivBEq Pos where
+  symm h := by simp_all
+  trans h1 h2 := by simp_all
+
+instance : EquivBEq Pos := EquivBEq.mk
+
+
+
 
 --namespace TypeStack.DecidableEq
 
