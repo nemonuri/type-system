@@ -6,7 +6,17 @@ public section
 
 namespace DotNet
 
+#print Prod.casesOn
 #print TypeStack.casesOn
+
+namespace TypeStack
+
+--private def motiveFst
+
+
+
+end TypeStack
+
 
 mutual
 
@@ -19,13 +29,9 @@ mutual
     let tst2' := cast lemma1 tst2
     match tst1, tst2' with
     | .alloc td1, .alloc td2 => td1 == td2
-    | .push pred1 p1 last1, .push pred2' p2 last2 =>
-      have lemma2 := by
-        rename_i prc1 prc2
-        show TypeStack prc2 = TypeStack prc1
-
+    | .push prc1 pred1 last1, .push prc2' pred2' last2 =>
       TypeSpec.beq last1 last2 &&
-      TypeStack.beq pred1 (cast lemma2 pred2')
+      TypeStack.beq pred1 (cast (h := by sorry) pred2')
     |  _, _ => false
 
   def TypeSpec.beq
