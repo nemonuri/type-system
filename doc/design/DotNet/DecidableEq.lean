@@ -39,7 +39,9 @@ theorem TypeStack.decon_type_eq
 -/
 
 #print TypeStack.casesOn
+#print TypeStack.noConfusion
 
+set_option pp.showLetValues true in
 mutual
 
 /-
@@ -88,13 +90,18 @@ mutual
         | .alloc td2 => td1 == td2
         | _ => .false
       let ifPush
-        (prc: Pos) (pred: TypeStack prc.val) (item: TypeSpec)
-        (index_eq_proof: index_eq (TypeStack.push prc pred item))
-        : Bool := sorry
+        (prc1: Pos) (pred1: TypeStack prc1.val) (item1: TypeSpec)
+        (index_eq_proof: index_eq (TypeStack.push prc1 pred1 item1))
+        : Bool :=
+        match tst2 with
+        | .alloc _ => .false
+        | .push prc2 pred2 item2 =>
+            TypeSpec.beq item1 item2 &&
+            TypeStack.beqAux pred1 pred2
       TypeStack.casesOn tst1 ifAlloc ifPush (index_eq_lemma tst1)
     Decidable.byCases ifReEqTrue (fun _: ¬rc_eq => .false)
 
-
+  def TypeStack.beq {rc: Nat} (tst1 tst2: TypeStack rc) := TypeStack.beqAux tst1 tst2
 
 
 
