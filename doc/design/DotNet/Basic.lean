@@ -22,11 +22,10 @@ mutual
   inductive TypeStack : (remainedCount: Nat) → Type 0 where
     | alloc : (typeDef: TypeDef) → TypeStack typeDef.arity
     | push :
-        {remainingCount: Nat} →
-        (predecessor: TypeStack remainingCount) →
-        (predecessorIsNotInitialized: 0 < remainingCount) →
+        (remainingCount: Pos) →
+        (predecessor: TypeStack remainingCount.val) →
         (item: TypeSpec) →
-        TypeStack (remainingCount-1)
+        TypeStack (remainingCount.val - 1)
 
   inductive TypeSpec where
     | var : TypeSpec
@@ -36,22 +35,17 @@ end
 namespace TypeStack
 
 @[expose]
-def pushPos {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec) : TypeStack (rc.val - 1) :=
-  TypeStack.push tst rc.property tsp
-
-@[simp]
-theorem push_eq_pushPos {rc: Nat} (tst: TypeStack rc) (p: 0 < rc) (tsp: TypeSpec)
-  : TypeStack.push tst p tsp = TypeStack.pushPos (rc := ⟨rc, p⟩) tst tsp := by
-  rfl
+abbrev pushAuto {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec) : TypeStack (rc.val - 1) :=
+  TypeStack.push rc tst tsp
 
 def typeDef {rc: Nat} (tst: TypeStack rc) : TypeDef :=
   match tst with
   | .alloc td => td
-  | .push pred _ _ => pred.typeDef
+  | .push _ pred _ => pred.typeDef
 
 @[simp]
 theorem typeDef_is_invariant {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
-  : (tst.pushPos tsp).typeDef = tst.typeDef := by
+  : (tst.pushAuto tsp).typeDef = tst.typeDef := by
   rfl
 
 def capacity {rc: Nat} (tst: TypeStack rc) : Nat := tst.typeDef.arity
@@ -60,20 +54,20 @@ def capacity {rc: Nat} (tst: TypeStack rc) : Nat := tst.typeDef.arity
 
 @[simp]
 theorem capacity_is_invariant {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
-  : (tst.pushPos tsp).capacity = tst.capacity := by
+  : (tst.pushAuto tsp).capacity = tst.capacity := by
   rfl
 
 def length {rc: Nat} (tst: TypeStack rc) : Nat :=
   match tst with
   | .alloc _ => 0
-  | .push pred _ _ => pred.length + 1
+  | .push _ pred _ => pred.length + 1
 
 @[simp]
 theorem length_alloc (td: TypeDef) : (TypeStack.alloc td).length = 0 := by rfl
 
 @[simp]
 theorem length_app {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
-  : (tst.pushPos tsp).length = tst.length + 1 := by
+  : (tst.pushAuto tsp).length = tst.length + 1 := by
   rfl
 
 @[expose]
@@ -82,7 +76,7 @@ def remainedCountPlusLength {rc: Nat} (tst: TypeStack rc) : Nat := rc + tst.leng
 @[simp]
 theorem remainedCountPlusLength_is_invariant
   {rc: Pos} (tst : TypeStack rc) (tsp: TypeSpec)
-  : (tst.pushPos tsp).remainedCountPlusLength = tst.remainedCountPlusLength := by
+  : (tst.pushAuto tsp).remainedCountPlusLength = tst.remainedCountPlusLength := by
   unfold remainedCountPlusLength
   simp
   omega
@@ -104,7 +98,7 @@ theorem remainedCountPlusLength_eq_capacity
   : tst.remainedCountPlusLength = tst.capacity := by
   cases tst with
   | alloc td => simp [remainedCountPlusLength_alloc_eq_capacity]
-  | push pred _ _ =>
+  | push _ pred _ =>
       simp
       have lemma1 : pred.remainedCountPlusLength = pred.capacity := pred.remainedCountPlusLength_eq_capacity
       exact lemma1
@@ -132,7 +126,7 @@ theorem length_le_capacity
 def getLast
   {rc: Nat} (tst: TypeStack rc) (i: Fin tst.length)
   : TypeSpec :=
-  let .push pred p last := tst
+  let .push prc pred last := tst
   let .mk index isLt := i
   match index with
   | 0 => last
@@ -202,7 +196,7 @@ theorem not_app {rc: Nat} (tst: NonGeneric rc) : ¬(tst.val matches push ..) := 
   | push pred p last =>
       simp only [capacity_eq_remainedCount_plus_length] at isNonGeneric
       simp only [lemma1] at isNonGeneric
-      simp only [push_eq_pushPos, length_app] at isNonGeneric
+      simp only [length_app] at isNonGeneric
       contradiction -- ¬isNonGeneric : 0 + (pred.length + 1) ≠ 0
 
 /-
@@ -219,7 +213,7 @@ end NonGeneric
 private def toList_aux {rc: Nat} (tst: TypeStack rc) : List TypeSpec :=
   match tst with
   | .alloc td => []
-  | .push pred _ last =>
+  | .push _ pred last =>
       let acc := pred.toList_aux;
       last::acc
 
@@ -230,10 +224,9 @@ private theorem toList_aux_length_eq_length
   | .alloc td =>
       simp only [length_alloc]
       rfl
-  | .push pred p last =>
+  | .push rc pred last =>
       have lemma1 := pred.toList_aux_length_eq_length
-      have lemma2 : (TypeStack.push pred p last).toList_aux = (last :: pred.toList_aux) := by rfl
-      simp only [push_eq_pushPos] at lemma2
+      have lemma2 : (pred.pushAuto last).toList_aux = (last :: pred.toList_aux) := by rfl
       simp [lemma2]
       exact lemma1
 
