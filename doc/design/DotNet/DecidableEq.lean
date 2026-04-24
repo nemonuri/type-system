@@ -32,24 +32,37 @@ instance : PartialEquivBEq Pos where
 
 instance : EquivBEq Pos := EquivBEq.mk
 
+/-
+theorem TypeStack.decon_type_eq
+  (rc: Nat) (tst1 tst2: TypeStack rc) := by
+  show tst1 = tst2
+-/
 
-
-
---namespace TypeStack.DecidableEq
-
---private def motive1 (rc: Nat) (_: TypeStack rc) := TypeStack rc
---theorem decon_type_eq
-
-
---end TypeStack.DecidableEq
-
+#print TypeStack.casesOn
 
 mutual
 
+/-
   def TypeStack.beq
     {rc: Nat} (tst1 tst2: TypeStack rc)
     : Bool :=
     open TypeStack in
+    let ifTst1Alloc (td1: TypeDef) (proof: tst1 = TypeStack.alloc td1) : Bool :=
+      match tst2 with
+      | .alloc td2 => td1 == td2
+      | _ => .false
+    let ifTst1Push
+      (prc1: Pos) (pred1: TypeStack prc1.val) (item1: TypeSpec)
+      (proof: tst1 = pred1.pushAuto item1)
+      : Bool :=
+      match ts2 with
+      | .push prc2 pred2 item2 =>
+
+
+    match tst1, tst2 with
+    | .alloc td1, .alloc td2 => .true
+
+
     match
       (motive := TypeStack rc → TypeStack rc → Bool)
       tst1, tst2
@@ -59,6 +72,31 @@ mutual
       TypeSpec.beq last1 last2 &&
       TypeStack.beq pred1 (cast (h := by sorry) pred2')
     |  _, _ => false
+-/
+
+
+
+  private def TypeStack.beqAux
+    {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2) : Bool :=
+    let toIndex {rcN: Nat} (tstN: TypeStack rcN) := rcN
+    let index_eq {rcN: Nat} (tstN: TypeStack rcN) := toIndex tstN = rcN
+    have index_eq_lemma {rcN: Nat} (tstN: TypeStack rcN) : index_eq tstN := by rfl
+    let rc_eq := toIndex tst1 = toIndex tst2
+    let ifReEqTrue (rc_eq_proof: rc_eq) : Bool :=
+      let ifAlloc (td1: TypeDef) (index_eq_proof: index_eq (TypeStack.alloc td1)) : Bool :=
+        match tst2 with
+        | .alloc td2 => td1 == td2
+        | _ => .false
+      let ifPush
+        (prc: Pos) (pred: TypeStack prc.val) (item: TypeSpec)
+        (index_eq_proof: index_eq (TypeStack.push prc pred item))
+        : Bool := sorry
+      TypeStack.casesOn tst1 ifAlloc ifPush (index_eq_lemma tst1)
+    Decidable.byCases ifReEqTrue (fun _: ¬rc_eq => .false)
+
+
+
+
 
   def TypeSpec.beq
     (typeSpec1 typeSpec2: TypeSpec)
