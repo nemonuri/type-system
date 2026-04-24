@@ -19,107 +19,120 @@ instance : Hashable Pos where
 
 
 mutual
-  inductive TypeCon : Nat → Type 0 where
-    | init : (typeDef: TypeDef) → TypeCon typeDef.arity
-    | app : {predArity: Pos} → (pred: TypeCon predArity) → (last: TypeSpec) → TypeCon (predArity-1)
+  inductive TypeStack : (remainedCount: Nat) → Type 0 where
+    | alloc : (typeDef: TypeDef) → TypeStack typeDef.arity
+    | push :
+        {remainingCount: Nat} →
+        (predecessor: TypeStack remainingCount) →
+        (predecessorIsNotInitialized: 0 < remainingCount) →
+        (item: TypeSpec) →
+        TypeStack (remainingCount-1)
 
   inductive TypeSpec where
     | var : TypeSpec
-    | con : (TypeCon 0) → TypeSpec
+    | con : (TypeStack 0) → TypeSpec
 end
 
-namespace TypeCon
+namespace TypeStack
 
-def typeDef {arity: Nat} (typeCon: TypeCon arity) : TypeDef :=
-  match typeCon with
-  | init td => td
-  | app typeCon0 _ => typeCon0.typeDef
+@[expose]
+def pushPos {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec) : TypeStack (rc.val - 1) :=
+  TypeStack.push tst rc.property tsp
 
 @[simp]
-theorem typeDef_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.app last).typeDef = pred.typeDef := by
+theorem push_eq_pushPos {rc: Nat} (tst: TypeStack rc) (p: 0 < rc) (tsp: TypeSpec)
+  : TypeStack.push tst p tsp = TypeStack.pushPos (rc := ⟨rc, p⟩) tst tsp := by
   rfl
 
-def maxLength {arity: Nat} (typeCon: TypeCon arity) : Nat := typeCon.typeDef.arity
-
-
+def typeDef {rc: Nat} (tst: TypeStack rc) : TypeDef :=
+  match tst with
+  | .alloc td => td
+  | .push pred _ _ => pred.typeDef
 
 @[simp]
-theorem maxLength_is_invariant {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.app last).maxLength = pred.maxLength := by
+theorem typeDef_is_invariant {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
+  : (tst.pushPos tsp).typeDef = tst.typeDef := by
   rfl
 
-def length {arity: Nat} (typeCon: TypeCon arity) : Nat :=
-  match typeCon with
-  | init _ => 0
-  | app pred _ => pred.length + 1
+def capacity {rc: Nat} (tst: TypeStack rc) : Nat := tst.typeDef.arity
+
+
 
 @[simp]
-theorem length_init (typeDef: TypeDef) : (TypeCon.init typeDef).length = 0 := by rfl
-
-@[simp]
-theorem length_app {predArity: Pos} (pred: TypeCon predArity) (last: TypeSpec)
-  : (pred.app last).length = pred.length + 1 := by
+theorem capacity_is_invariant {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
+  : (tst.pushPos tsp).capacity = tst.capacity := by
   rfl
 
-def arityPlusLength {arity: Nat} (typeCon: TypeCon arity) : Nat := arity + typeCon.length
+def length {rc: Nat} (tst: TypeStack rc) : Nat :=
+  match tst with
+  | .alloc _ => 0
+  | .push pred _ _ => pred.length + 1
 
 @[simp]
-theorem arityPlusLength_is_invariant
-  {predArity: Pos}
-  (pred : TypeCon predArity)
-  (last: TypeSpec)
-  : (pred.app last).arityPlusLength = pred.arityPlusLength := by
-  unfold arityPlusLength
+theorem length_alloc (td: TypeDef) : (TypeStack.alloc td).length = 0 := by rfl
+
+@[simp]
+theorem length_app {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
+  : (tst.pushPos tsp).length = tst.length + 1 := by
+  rfl
+
+@[expose]
+def remainedCountPlusLength {rc: Nat} (tst: TypeStack rc) : Nat := rc + tst.length
+
+@[simp]
+theorem remainedCountPlusLength_is_invariant
+  {rc: Pos} (tst : TypeStack rc) (tsp: TypeSpec)
+  : (tst.pushPos tsp).remainedCountPlusLength = tst.remainedCountPlusLength := by
+  unfold remainedCountPlusLength
   simp
   omega
 
-theorem arityPlusLength_init_eq_maxLength
-  {arity: Nat} (typeCon: TypeCon arity) (refiner: typeCon matches init _)
-  : typeCon.arityPlusLength = typeCon.maxLength := by
-  cases typeCon with
-  | app _ _ => contradiction
-  | init td =>
-      unfold arityPlusLength
-      unfold maxLength
+theorem remainedCountPlusLength_alloc_eq_capacity
+  {rc: Nat} (tst: TypeStack rc) (alloc: tst matches alloc _)
+  : tst.remainedCountPlusLength = tst.capacity := by
+  cases tst with
+  | push _ _ _ => contradiction
+  | alloc td =>
+      unfold remainedCountPlusLength
+      unfold capacity
       simp
       rfl
 
 @[simp]
-theorem arityPlusLength_eq_maxLength
-  {arity: Nat} (typeCon: TypeCon arity)
-  : typeCon.arityPlusLength = typeCon.maxLength := by
-  cases typeCon with
-  | init td => simp [arityPlusLength_init_eq_maxLength]
-  | app pred last =>
+theorem remainedCountPlusLength_eq_capacity
+  {rc: Nat} (tst: TypeStack rc)
+  : tst.remainedCountPlusLength = tst.capacity := by
+  cases tst with
+  | alloc td => simp [remainedCountPlusLength_alloc_eq_capacity]
+  | push pred _ _ =>
       simp
-      have lemma1 : pred.arityPlusLength = pred.maxLength := pred.arityPlusLength_eq_maxLength
+      have lemma1 : pred.remainedCountPlusLength = pred.capacity := pred.remainedCountPlusLength_eq_capacity
       exact lemma1
 
-theorem maxLength_eq_arity_plus_length
-  {arity: Nat} (typeCon: TypeCon arity)
-  : typeCon.maxLength = arity + typeCon.length := by
-  rw [typeCon.arityPlusLength_eq_maxLength |> Eq.symm]
+theorem capacity_eq_remainedCount_plus_length
+  {rc: Nat} (tst: TypeStack rc)
+  : tst.capacity = rc + tst.length := by
+  rw [tst.remainedCountPlusLength_eq_capacity |> Eq.symm]
   rfl
 
-theorem arity_le_maxLength
-  {arity: Nat} (typeCon: TypeCon arity)
-  : arity ≤ typeCon.maxLength := by
-  have lemma1 := typeCon.arityPlusLength_eq_maxLength
-  unfold arityPlusLength at lemma1
+theorem remainedCount_le_capacity
+  {rc: Nat} (tst: TypeStack rc)
+  : rc ≤ tst.capacity := by
+  have lemma1 := tst.remainedCountPlusLength_eq_capacity
+  unfold remainedCountPlusLength at lemma1
   omega
 
-theorem length_le_maxLength
-  {arity: Nat} (typeCon: TypeCon arity)
-  : typeCon.length ≤ typeCon.maxLength := by
-  have lemma1 := typeCon.arityPlusLength_eq_maxLength
-  unfold arityPlusLength at lemma1
+theorem length_le_capacity
+  {rc: Nat} (tst: TypeStack rc)
+  : tst.length ≤ tst.capacity := by
+  have lemma1 := tst.remainedCountPlusLength_eq_capacity
+  unfold remainedCountPlusLength at lemma1
   omega
 
 def getLast
-  {arity: Nat} (typeCon: TypeCon arity) (i: Fin typeCon.length)
+  {rc: Nat} (tst: TypeStack rc) (i: Fin tst.length)
   : TypeSpec :=
-  let .app pred last := typeCon
+  let .push pred p last := tst
   let .mk index isLt := i
   match index with
   | 0 => last
@@ -130,121 +143,122 @@ def getLast
       pred.getLast (Fin.mk i2 lemma1)
 
 
-abbrev ArityZero := TypeCon 0
+abbrev Initialized := TypeStack 0
 
-namespace ArityZero
+namespace Initialized
 
 @[simp]
-theorem length_eq_maxLength (typeCon: ArityZero) : typeCon.length = typeCon.maxLength := by
-  simp [maxLength_eq_arity_plus_length]
+theorem length_eq_capacity (tst: Initialized) : tst.length = tst.capacity := by
+  simp [capacity_eq_remainedCount_plus_length]
 
-def get (typeCon: ArityZero) (i: Fin typeCon.maxLength) : TypeSpec :=
+def get (tst: Initialized) (i: Fin tst.capacity) : TypeSpec :=
   let .mk index isLt := i
-  have lemma1 : typeCon.maxLength > 0 := by omega
-  let revIndex := typeCon.maxLength - 1 - index
-  have lemma2 : revIndex < typeCon.length := by
+  have lemma1 : tst.capacity > 0 := by omega
+  let revIndex := tst.capacity - 1 - index
+  have lemma2 : revIndex < tst.length := by
     simp
     omega
-  typeCon.getLast (Fin.mk revIndex lemma2)
+  tst.getLast (Fin.mk revIndex lemma2)
 
-end ArityZero
+end Initialized
 
-abbrev NonGeneric (arity: Nat) := { typeCon: TypeCon arity // typeCon.maxLength = 0 }
+abbrev NonGeneric (rc: Nat) := { tst: TypeStack rc // tst.capacity = 0 }
 
 namespace NonGeneric
 
-def split {arity: Nat} (typeCon: TypeCon arity)
-  : Sum (NonGeneric arity) { tc: TypeCon arity // tc.maxLength ≠ 0 } :=
-  let p := typeCon.maxLength = 0
+def split {rc: Nat} (tst: TypeStack rc)
+  : Sum (NonGeneric rc) { tc: TypeStack rc // tc.capacity ≠ 0 } :=
+  let p := tst.capacity = 0
   Decidable.byCases
-    (fun h1: p => Sum.inl ⟨typeCon, h1⟩)
-    (fun h2: ¬p => Sum.inr ⟨typeCon, h2⟩)
+    (fun h1: p => Sum.inl ⟨tst, h1⟩)
+    (fun h2: ¬p => Sum.inr ⟨tst, h2⟩)
 
 @[simp]
-theorem arity_eq_zero
-  {arity: Nat} (nonGeneric: NonGeneric arity)
-  : arity = 0 := by
-  have lemma1 := nonGeneric.val.arity_le_maxLength
+theorem remainedCount_eq_zero
+  {rc: Nat} (tst: NonGeneric rc)
+  : rc = 0 := by
+  have lemma1 := tst.val.remainedCount_le_capacity
   omega
 
 @[simp]
-theorem is_ArityZero
-  {arity: Nat} (nonGeneric: NonGeneric arity)
-  : NonGeneric arity = NonGeneric 0 := by
-  rw [nonGeneric.arity_eq_zero]
+theorem is_Initialized
+  {rc: Nat} (tst: NonGeneric rc)
+  : NonGeneric rc = NonGeneric 0 := by
+  rw [tst.remainedCount_eq_zero]
 
-def toArityZero {arity: Nat} (nonGeneric: NonGeneric arity) : NonGeneric 0 :=
-  cast nonGeneric.is_ArityZero nonGeneric
+def toInitialized {rc: Nat} (tst: NonGeneric rc) : NonGeneric 0 :=
+  cast tst.is_Initialized tst
 
 @[simp]
-theorem length_eq_zero (nonGeneric: NonGeneric 0) : nonGeneric.val.length = 0 := by
-  simp [ArityZero.length_eq_maxLength]
-  exact nonGeneric.property
+theorem length_eq_zero (tst: NonGeneric 0) : tst.val.length = 0 := by
+  simp [Initialized.length_eq_capacity]
+  exact tst.property
 
-theorem not_app {arity: Nat} (nonGeneric: NonGeneric arity) : ¬(nonGeneric.val matches app ..) := by
-  have lemma1 := nonGeneric.arity_eq_zero
-  let .mk typeCon isNonGeneric := nonGeneric
-  cases typeCon with
-  | init td => simp
-  | app pred last =>
-      simp only [maxLength_eq_arity_plus_length] at isNonGeneric
+theorem not_app {rc: Nat} (tst: NonGeneric rc) : ¬(tst.val matches push ..) := by
+  have lemma1 := tst.remainedCount_eq_zero
+  let .mk typeStack isNonGeneric := tst
+  cases typeStack with
+  | alloc td => simp
+  | push pred p last =>
+      simp only [capacity_eq_remainedCount_plus_length] at isNonGeneric
       simp only [lemma1] at isNonGeneric
-      simp only [length_app] at isNonGeneric
+      simp only [push_eq_pushPos, length_app] at isNonGeneric
       contradiction -- ¬isNonGeneric : 0 + (pred.length + 1) ≠ 0
 
 /-
-theorem maxLength_eq_zero_implies_not_app
-  {arity: Nat} (typeCon: TypeCon arity) (maxLengthEqZero: typeCon.maxLength = 0)
-  : ¬(typeCon matches app ..) := by
-  have lemma1 : typeCon.length = 0 := by apply typeCon.maxLength_eq_zero_implies_length_eq_zero; assumption
+theorem capacity_eq_zero_implies_not_app
+  {arity: Nat} (typeStack: TypeCon arity) (capacityEqZero: typeStack.capacity = 0)
+  : ¬(typeStack matches app ..) := by
+  have lemma1 : typeStack.length = 0 := by apply typeStack.capacity_eq_zero_implies_length_eq_zero; assumption
 -/
 
 end NonGeneric
 
 
 
-private def toList_aux {arity: Nat} (typeCon: TypeCon arity) : List TypeSpec :=
-  match typeCon with
-  | init td => []
-  | app pred last =>
+private def toList_aux {rc: Nat} (tst: TypeStack rc) : List TypeSpec :=
+  match tst with
+  | .alloc td => []
+  | .push pred _ last =>
       let acc := pred.toList_aux;
       last::acc
 
 private theorem toList_aux_length_eq_length
-  {arity: Nat} (typeCon: TypeCon arity)
-  : typeCon.toList_aux.length = typeCon.length := by
-  match typeCon with
-  | init td =>
-      simp only [length_init]
+  {rc: Nat} (tst: TypeStack rc)
+  : tst.toList_aux.length = tst.length := by
+  match tst with
+  | .alloc td =>
+      simp only [length_alloc]
       rfl
-  | app pred last =>
+  | .push pred p last =>
       have lemma1 := pred.toList_aux_length_eq_length
-      have lemma2 : (pred.app last).toList_aux = (last :: pred.toList_aux) := by rfl
+      have lemma2 : (TypeStack.push pred p last).toList_aux = (last :: pred.toList_aux) := by rfl
+      simp only [push_eq_pushPos] at lemma2
       simp [lemma2]
       exact lemma1
 
-namespace ArityZero
+namespace Initialized
 
-def toList (typeCon: ArityZero) : List TypeSpec := typeCon.toList_aux.reverse
+def toList (typeStack: Initialized) : List TypeSpec := typeStack.toList_aux.reverse
 
 @[simp]
-theorem toList_length_eq_maxLength (typeCon: ArityZero) : typeCon.toList.length = typeCon.maxLength := by
+theorem toList_length_eq_capacity (typeStack: Initialized) : typeStack.toList.length = typeStack.capacity := by
   unfold toList
   simp [toList_aux_length_eq_length]
 
-def toVector (typeCon: ArityZero) : Vector TypeSpec (typeCon.maxLength) :=
-  let result := typeCon.toList.toArray.toVector
-  let fromT := typeCon.toList.toArray.size
-  let toT := typeCon.maxLength
+def toVector (typeStack: Initialized) : Vector TypeSpec (typeStack.capacity) :=
+  let result := typeStack.toList.toArray.toVector
+  let fromT := typeStack.toList.toArray.size
+  let toT := typeStack.capacity
   have lemma1 : fromT = toT := by
     unfold fromT toT
     simp
   have lemma2 : Vector TypeSpec fromT = Vector TypeSpec toT := by simp [lemma1]
   cast lemma2 result
 
-end ArityZero
+end Initialized
 
-end TypeCon
+end TypeStack
 
 end DotNet
 

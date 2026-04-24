@@ -6,23 +6,26 @@ public section
 
 namespace DotNet
 
+#print TypeStack.casesOn
+
 mutual
 
-  def TypeCon.beq
-    {arity: Nat} (typeCon1 typeCon2: TypeCon arity)
+  def TypeStack.beq
+    {rc: Nat} (tst1 tst2: TypeStack rc)
     : Bool :=
-    open TypeCon in
-    let arity2' := arity
-    have lemma1 : TypeCon arity = TypeCon arity2' := by rfl
-    let typeCon2' := cast lemma1 typeCon2
-    match typeCon1, typeCon2' with
-    | .init td1, .init td2 => td1 == td2
-    | .app pred1 last1, .app pred2' last2 =>
+    open TypeStack in
+    let rc2' := rc
+    have lemma1 := show TypeStack rc = TypeStack rc2' by rfl
+    let tst2' := cast lemma1 tst2
+    match tst1, tst2' with
+    | .alloc td1, .alloc td2 => td1 == td2
+    | .push pred1 p1 last1, .push pred2' p2 last2 =>
+      have lemma2 := by
+        rename_i prc1 prc2
+        show TypeStack prc2 = TypeStack prc1
+
       TypeSpec.beq last1 last2 &&
-      TypeCon.beq pred1 (cast (by
-        rename_i n1 n2
-        let .mk a1 a2 := n1
-        ) pred2')
+      TypeStack.beq pred1 (cast lemma2 pred2')
     |  _, _ => false
 
   def TypeSpec.beq
@@ -30,54 +33,54 @@ mutual
     : Bool :=
     match typeSpec1, typeSpec2 with
     | .var, .var => .true
-    | .con tc1, .con tc2 => TypeCon.beq tc1 tc2
+    | .con tc1, .con tc2 => TypeStack.beq tc1 tc2
     | _, _ => .false
 
 end
 
 mutual
 
-  def TypeCon.hash
-    {arity: Nat} (typeCon: TypeCon arity)
+  def TypeStack.hash
+    {arity: Nat} (typeCon: TypeStack arity)
     : UInt64 :=
-    open TypeCon in
+    open TypeStack in
     match typeCon with
     | .init td => Hashable.hash td
-    | .app pred last => mixHash (TypeSpec.hash last) (TypeCon.hash pred)
+    | .app pred last => mixHash (TypeSpec.hash last) (TypeStack.hash pred)
 
   def TypeSpec.hash
     (typeSpec: TypeSpec)
     : UInt64 :=
     match typeSpec with
-    | .var => 0
-    | .con tc => TypeCon.hash tc
+    | .var => 0TypeStack
+    | .con tc => TypeStack.hash tc
 
 end
 
-instance {arity: Nat} : BEq (TypeCon arity) where
-  beq tc1 tc2 := TypeCon.beq tc1 tc2
+instance {arity: Nat} : BEq (TypeStack arity) where
+  beq tc1 tc2 := TypeStack.beq tc1 tTypeStack
 
 instance : BEq TypeSpec where
   beq := TypeSpec.beq
 
-instance {arity: Nat} : Hashable (TypeCon arity) where
-  hash tc := TypeCon.hash tc
+instance {arity: Nat} : Hashable (TypeStack arity) where
+  hash tc := TypeStack.hash tc
 
 instance : Hashable TypeSpec where
   hash := TypeSpec.hash
 
 mutual
 
-  theorem TypeCon.hashEq
-    {arity: Nat} (typeCon1: TypeCon arity1)
-    {arity2: Nat} (typeCon2: TypeCon arity2)
+  theorem TypeStack.hashEq
+    {arity: Nat} (typeCon1: TypeStack arity1)
+    {arity2: Nat} (typeCon2: TypeStack arity2)
     : (typeCon1 == typeCon2) = true → hash a = hash b :=
-    open TypeCon in
+    open TypeStack in
     match typeCon1, typeCon2 with
     | .init td1, .init td2 => td1 == td2
     | .app pred1 last1, .app pred2 last2 =>
       TypeSpec.beq last1 last2 &&
-      TypeCon.beq pred1 pred2
+      TypeStack.beq pred1 pred2
     | _, _ => false
 
   theorem TypeSpec.hashEq
@@ -85,7 +88,7 @@ mutual
     : Bool :=
     match typeSpec1, typeSpec2 with
     | .var, .var => .true
-    | .con tc1, .con tc2 => TypeCon.beq tc1 tc2
+    | .con tc1, .con tc2 => TypeStack.beq tc1 tc2
     | _, _ => .false
 
 
