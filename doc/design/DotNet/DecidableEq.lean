@@ -6,6 +6,7 @@ public section
 
 namespace DotNet
 
+section Pos
 
 instance : BEq Pos where
   beq p1 p2 := p1.val == p2.val
@@ -32,12 +33,20 @@ instance : PartialEquivBEq Pos where
 
 instance : EquivBEq Pos := EquivBEq.mk
 
+end Pos
 
+
+section TypeDef
+
+--instance : LawfulBEq
+
+
+end TypeDef
 
 mutual
 
   private def TypeStack.beqAux
-    {rc1: Nat} {rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
+    {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2) : Bool :=
     match tst1 with
     | .alloc td1 =>
       match tst2 with
@@ -47,8 +56,7 @@ mutual
       match tst2 with
       | .alloc _ => .false
       | .push prc2 pred2 item2 =>
-        TypeSpec.beq item1 item2 &&
-        TypeStack.beqAux pred1 pred2
+        TypeSpec.beq item1 item2 && TypeStack.beqAux pred1 pred2
 
   def TypeStack.beq {rc: Nat} (tst1 tst2: TypeStack rc) := TypeStack.beqAux tst1 tst2
 
@@ -69,20 +77,20 @@ mutual
     : UInt64 :=
     open TypeStack in
     match typeCon with
-    | .init td => Hashable.hash td
-    | .app pred last => mixHash (TypeSpec.hash last) (TypeStack.hash pred)
+    | .alloc td => Hashable.hash td
+    | .push _ pred item => mixHash (TypeSpec.hash item) (TypeStack.hash pred)
 
   def TypeSpec.hash
     (typeSpec: TypeSpec)
     : UInt64 :=
     match typeSpec with
-    | .var => 0TypeStack
+    | .var => 0
     | .con tc => TypeStack.hash tc
 
 end
 
-instance {arity: Nat} : BEq (TypeStack arity) where
-  beq tc1 tc2 := TypeStack.beq tc1 tTypeStack
+instance {rc: Nat} : BEq (TypeStack rc) where
+  beq tc1 tc2 := TypeStack.beq tc1 tc2
 
 instance : BEq TypeSpec where
   beq := TypeSpec.beq
@@ -93,21 +101,34 @@ instance {arity: Nat} : Hashable (TypeStack arity) where
 instance : Hashable TypeSpec where
   hash := TypeSpec.hash
 
+/-
 mutual
 
-  theorem TypeStack.hashEq
-    {arity: Nat} (typeCon1: TypeStack arity1)
-    {arity2: Nat} (typeCon2: TypeStack arity2)
-    : (typeCon1 == typeCon2) = true → hash a = hash b :=
-    open TypeStack in
-    match typeCon1, typeCon2 with
-    | .init td1, .init td2 => td1 == td2
-    | .app pred1 last1, .app pred2 last2 =>
-      TypeSpec.beq last1 last2 &&
-      TypeStack.beq pred1 pred2
-    | _, _ => false
+  theorem TypeStack.hash_eq
+    {rc: Nat} (tst1 tst2: TypeStack rc) (beq_true: (tst1 == tst2) = true)
+    : hash tst1 = hash tst2 := by
+    let instLhTypeDef := (inferInstance : LawfulHashable TypeDef)
+    have lemma1 : (tst1 == tst2) = (TypeStack.beq tst1 tst2) := by rfl
+    rewrite [lemma1] at beq_true
+    unfold beq beqAux at beq_true
+    unfold hash
+    split
+    next rc₁ tst2₁ typeDef₁ =>
+      simp at beq_true
+      split
+      next rc2₁_₁ tst2₁_₁ typeDef₁_₁ heq₁_₁1 heq₁_₁2 =>
+        split at beq_true
+        next _ _ typeDef₁_₁_₁ _ heq₁_₁_₁2 =>
+          simp_all
 
-  theorem TypeSpec.hashEq
+
+
+
+
+
+
+
+  theorem TypeSpec.hash_eq
     (typeSpec1 typeSpec2: TypeSpec)
     : Bool :=
     match typeSpec1, typeSpec2 with
@@ -117,6 +138,7 @@ mutual
 
 
 end
+-/
 
 
 end DotNet

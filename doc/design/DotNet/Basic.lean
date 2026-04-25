@@ -7,7 +7,8 @@ namespace DotNet
 structure TypeDef where
   name : String
   arity : Nat
-  deriving DecidableEq, BEq, Hashable
+  deriving DecidableEq, Hashable
+
 
 abbrev Pos := { x : Nat // 0 < x }
 
