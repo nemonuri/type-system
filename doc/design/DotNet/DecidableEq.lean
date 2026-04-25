@@ -38,8 +38,11 @@ end Pos
 
 section TypeDef
 
---instance : LawfulBEq
+instance : BEq TypeDef := inferInstance
 
+instance : LawfulBEq TypeDef := inferInstance
+
+instance : LawfulHashable TypeDef := inferInstance
 
 end TypeDef
 
