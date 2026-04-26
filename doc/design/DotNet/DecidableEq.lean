@@ -44,6 +44,10 @@ instance : LawfulBEq TypeDef := inferInstance
 
 instance : LawfulHashable TypeDef := inferInstance
 
+instance : EquivBEq TypeDef := inferInstance
+
+#print instEquivBEqTypeDef
+
 end TypeDef
 
 mutual
@@ -73,10 +77,17 @@ mutual
 
 end
 
+private theorem TypeStack.beqAux_rc
+  {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2)
+  (beqAuxIsTrue: (TypeStack.beqAux tst1 tst2) = true)
+  : rc1 = rc2 := by
+  sorry
+
+
 mutual
 
   def TypeStack.hash
-    {arity: Nat} (typeCon: TypeStack arity)
+    {rc: Nat} (typeCon: TypeStack rc)
     : UInt64 :=
     open TypeStack in
     match typeCon with
@@ -88,7 +99,7 @@ mutual
     : UInt64 :=
     match typeSpec with
     | .var => 0
-    | .con tc => TypeStack.hash tc
+    | .con tst => TypeStack.hash tst
 
 end
 
@@ -104,17 +115,74 @@ instance {arity: Nat} : Hashable (TypeStack arity) where
 instance : Hashable TypeSpec where
   hash := TypeSpec.hash
 
-/-
+namespace TypeStack
+
+-- Note: hash 함수의 같음을 비교하기 위해서는, case 별 simp 를 먼저 정의해 두는 것이 편하다.
+
+@[simp]
+theorem hash_alloc (td: TypeDef) : (TypeStack.alloc td).hash = Hashable.hash td := by rfl
+
+@[simp]
+theorem hash_push {rc: Pos} (pred: TypeStack rc.val) (item: TypeSpec)
+  : (pred.pushAuto item).hash = mixHash (TypeSpec.hash item) (TypeStack.hash pred) := by
+  rfl
+
+end TypeStack
+
+namespace TypeSpec
+
+@[simp]
+theorem hash_var : TypeSpec.var.hash = 0 := by rfl
+
+@[simp]
+theorem hash_con (tst: TypeStack.Initialized) : (TypeSpec.con tst).hash = TypeStack.hash tst := by rfl
+
+end TypeSpec
+
 mutual
 
   theorem TypeStack.hash_eq
     {rc: Nat} (tst1 tst2: TypeStack rc) (beq_true: (tst1 == tst2) = true)
     : hash tst1 = hash tst2 := by
-    let instLhTypeDef := (inferInstance : LawfulHashable TypeDef)
-    have lemma1 : (tst1 == tst2) = (TypeStack.beq tst1 tst2) := by rfl
-    rewrite [lemma1] at beq_true
-    unfold beq beqAux at beq_true
-    unfold hash
+    have lemma_typeStack_beq
+      {rc₀: Nat} (tst₀1 tst₀2: TypeStack rc₀)
+      : (tst₀1 == tst₀2) = (TypeStack.beqAux tst₀1 tst₀2) := by
+      have lemma1 : (tst₀1 == tst₀2) = (TypeStack.beq tst₀1 tst₀2) := by rfl
+      unfold TypeStack.beq at lemma1
+      exact lemma1
+    rewrite [lemma_typeStack_beq tst1 tst2] at beq_true
+    have lemma_typeStack_hash {rc₀: Nat} (tst₀ :TypeStack rc₀)
+      : hash tst₀ = TypeStack.hash tst₀ := by
+      rfl
+    have lemma_typeSpec_beq (tsp₀1 tsp₀2: TypeSpec)
+      : (tsp₀1 == tsp₀2) = (TypeSpec.beq tsp₀1 tsp₀2) := by
+      rfl
+    have lemma_typeSpec_hash (tsp₀: TypeSpec) : Hashable.hash tsp₀ = TypeSpec.hash tsp₀ := by rfl
+    unfold TypeStack.beqAux at beq_true
+    cases tst1 with
+    | alloc td1 =>
+      simp_all
+      match td1.arity, tst2 with
+      | _, .alloc td2 =>
+        sorry
+      | _, .push rc₂ pred₂ item₂ =>
+        sorry
+    | push rc₂ pred₂ item₂ =>
+      sorry
+      /-
+      have lemma1 : Hashable.hash td1 = tst2.hash := by
+        match td1.arity, tst2 with
+        | _, alloc td2 =>
+      -/
+
+
+
+
+
+
+/-
+    rw [lemma2 tst1, lemma2 tst2]
+    unfold TypeStack.hash
     split
     next rc₁ tst2₁ typeDef₁ =>
       simp at beq_true
@@ -122,26 +190,49 @@ mutual
       next rc2₁_₁ tst2₁_₁ typeDef₁_₁ heq₁_₁1 heq₁_₁2 =>
         split at beq_true
         next _ _ typeDef₁_₁_₁ _ heq₁_₁_₁2 =>
+          simp at beq_true
+          subst_eqs
+          apply TypeStack.noConfusion heq₁_₁1 heq₁_₁2 -- 오호라, noConfusion 을 'apply' 하는 것 만으로, 골칫거리 Heq를 해결할 수 있구나!
+          intro typeDefEq
+          rw [typeDefEq]
+        next => contradiction
+      next =>
+        split at beq_true
+        next =>
           simp_all
-
-
-
-
-
-
+          subst_vars
+          subst_eqs
+-/
 
 
   theorem TypeSpec.hash_eq
-    (typeSpec1 typeSpec2: TypeSpec)
-    : Bool :=
-    match typeSpec1, typeSpec2 with
-    | .var, .var => .true
-    | .con tc1, .con tc2 => TypeStack.beq tc1 tc2
-    | _, _ => .false
+    (tsp1 tsp2: TypeSpec) (beq_true: (tsp1 == tsp2) = true)
+    : hash tsp1 = hash tsp2 := by
+    have lemma1 : (tsp1 == tsp2) = (TypeSpec.beq tsp1 tsp2) := by rfl
+    rewrite [lemma1] at beq_true
+    unfold TypeSpec.beq at beq_true
+    match tsp1, tsp2 with
+    | .var, .var => simp
+    | .con tst1, .con tst2 =>
+      have lemma2 := TypeStack.hash_eq tst1 tst2
+      have lemma3 (tst: TypeStack.Initialized) : TypeStack.hash tst = tst.hash := by rfl
+      have lemma4 (tsp: TypeSpec) : hash tsp = tsp.hash := by rfl
+      simp_all
+      by_cases ((tst1 == tst2) = true)
+      next if_pos =>
+        simp_all
+      next if_nes =>
+        have lemma5 : (tst1 == tst2) = (tst1.beq tst2) := by rfl
+        rewrite [lemma5] at if_nes
+        contradiction
+
+
+
+
 
 
 end
--/
+
 
 
 end DotNet
