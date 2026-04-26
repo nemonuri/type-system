@@ -132,6 +132,54 @@ theorem hash_con (tst: TypeStack.Initialized) : (TypeSpec.con tst).hash = TypeSt
 
 end TypeSpec
 
+
+mutual
+
+  theorem TypeStack.rfl_at {rc: Nat} (tst: TypeStack rc) : tst == tst := by
+    have lemma_beq : (tst == tst) = (tst.beq tst) := by rfl
+    rw [lemma_beq]
+    unfold TypeStack.beq TypeStack.beqAux
+    cases tst with
+    | alloc td₁ => simp
+    | push rc₁ pred₁ item₁ =>
+      simp
+      have lemma_left : item₁.beq item₁ := TypeSpec.rfl_at item₁
+      have lemma_right : pred₁.beq pred₁ := TypeStack.rfl_at pred₁
+      unfold TypeStack.beq at lemma_right
+      trivial
+
+  theorem TypeSpec.rfl_at (tsp: TypeSpec) : tsp == tsp := by
+    have lemma_beq : (tsp == tsp) = (tsp.beq tsp) := by rfl
+    rw [lemma_beq]
+    unfold TypeSpec.beq
+    cases tsp with
+    | var => simp
+    | con tst =>
+      simp
+      have lemma1 : tst.beq tst := TypeStack.rfl_at tst
+      exact lemma1
+
+end
+
+theorem TypeStack.rfl {rc} {tst: TypeStack rc} : tst == tst := TypeStack.rfl_at tst
+
+theorem TypeSpec.rfl {tsp: TypeSpec} : tsp == tsp := TypeSpec.rfl_at tsp
+
+instance {rc: Nat} : ReflBEq (TypeStack rc) where rfl := TypeStack.rfl
+
+instance : ReflBEq TypeSpec where rfl := TypeSpec.rfl
+
+
+mutual
+
+  --theorem TypeStack.eq_of_beq
+
+end
+
+
+
+
+
 mutual
 
   theorem TypeStack.hash_eq
@@ -227,8 +275,6 @@ mutual
 
 
 end
-
-#print TypeSpec.hash_eq._f
 
 end DotNet
 
