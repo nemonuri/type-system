@@ -77,13 +77,6 @@ mutual
 
 end
 
-private theorem TypeStack.beqAux_rc
-  {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2)
-  (beqAuxIsTrue: (TypeStack.beqAux tst1 tst2) = true)
-  : rc1 = rc2 := by
-  sorry
-
-
 mutual
 
   def TypeStack.hash
@@ -184,9 +177,25 @@ mutual
           rewrite [lemma1] at p1
           simp
           exact lemma1
-        simp at beq_true
-        have lemma_tsp_hash_eq := TypeSpec.hash_eq item₂ item₂_₂ beq_true.left
-        have lemma_tst_hash_eq := TypeStack.hash_eq
+        suffices goal₂_₂ : TypeStack.push rc₂_₂ pred₂_₂ item₂_₂ ≍ TypeStack.push rc₂ pred₂ item₂ from by
+          have lemma1 := HEq.trans heq₂_₂ goal₂_₂ |> HEq.symm
+          apply lemma1.elim
+          rfl
+        subst_eqs
+        simp_all
+        /-
+        goal :=
+        item₂.beq item₂_₂ = true ∧ pred₂.beqAux pred₂_₂ = true ⊢ pred₂_₂ = pred₂ ∧ item₂_₂ = item₂
+
+        ...결국 item₂ 과 pred₂ 가, 'LawfulBEq' 라는 것을 증명해야 하네...??
+        -/
+        sorry
+
+
+
+        --have lemma_tsp_hash_eq := TypeSpec.hash_eq item₂ item₂_₂ beq_true.left
+        --have lemma_tst_hash_eq
+        --have lemma_tst_hash_eq := TypeStack.hash_eq
 
 
 
@@ -206,25 +215,20 @@ mutual
     | .var, .var => simp
     | .con tst1, .con tst2 =>
       have lemma2 := TypeStack.hash_eq tst1 tst2
-      have lemma3 (tst: TypeStack.Initialized) : TypeStack.hash tst = tst.hash := by rfl
-      have lemma4 (tsp: TypeSpec) : hash tsp = tsp.hash := by rfl
-      simp_all
+      have lemma3 (tsp: TypeSpec) : hash tsp = tsp.hash := by rfl
       by_cases ((tst1 == tst2) = true)
       next if_pos =>
         simp_all
+        exact lemma2
       next if_nes =>
-        have lemma5 : (tst1 == tst2) = (tst1.beq tst2) := by rfl
-        rewrite [lemma5] at if_nes
+        have lemma4 : (tst1 == tst2) = (tst1.beq tst2) := by rfl
+        rewrite [lemma4] at if_nes
         contradiction
-
-
-
-
 
 
 end
 
-
+#print TypeSpec.hash_eq._f
 
 end DotNet
 
