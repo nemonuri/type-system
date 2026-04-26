@@ -163,50 +163,37 @@ mutual
     | alloc td1₁ =>
       simp at beq_true
       split at beq_true
-      next _ _ td2₁ index_eq₁ heq₁ =>
+      next _ _ td2₁_₁ _ heq₁_₁ =>
         simp at beq_true
-        rewrite [beq_true.symm] at heq₁
-        apply heq₁.symm.elim -- Note: 왜 HEq를 최대한 사용하지 말라는지, 뼈저리게 느꼈다...'꼴 맞추기'가 이렇게나 어려울 줄이야;;
+        rewrite [beq_true.symm] at heq₁_₁
+        apply heq₁_₁.symm.elim -- Note: 왜 HEq를 최대한 사용하지 말라는지, 뼈저리게 느꼈다...'꼴 맞추기'가 이렇게나 어려울 줄이야;;
         rfl
       next =>
         contradiction
-
     | push rc₂ pred₂ item₂ =>
-      sorry
-      /-
-      have lemma1 : Hashable.hash td1 = tst2.hash := by
-        match td1.arity, tst2 with
-        | _, alloc td2 =>
-      -/
-
-
-
-
-
-
-/-
-    rw [lemma2 tst1, lemma2 tst2]
-    unfold TypeStack.hash
-    split
-    next rc₁ tst2₁ typeDef₁ =>
       simp at beq_true
-      split
-      next rc2₁_₁ tst2₁_₁ typeDef₁_₁ heq₁_₁1 heq₁_₁2 =>
-        split at beq_true
-        next _ _ typeDef₁_₁_₁ _ heq₁_₁_₁2 =>
-          simp at beq_true
-          subst_eqs
-          apply TypeStack.noConfusion heq₁_₁1 heq₁_₁2 -- 오호라, noConfusion 을 'apply' 하는 것 만으로, 골칫거리 Heq를 해결할 수 있구나!
-          intro typeDefEq
-          rw [typeDefEq]
-        next => contradiction
+      split at beq_true
       next =>
-        split at beq_true
-        next =>
-          simp_all
-          subst_vars
-          subst_eqs
--/
+        contradiction
+      next _ rc₂_₂ pred₂_₂ item₂_₂ index_eq₂_₂ heq₂_₂ =>
+        have lemma_rc_eq : rc₂_₂ = rc₂ := by
+          let ⟨v1, p1⟩ := rc₂_₂
+          let ⟨v2, p2⟩ := rc₂
+          simp at index_eq₂_₂
+          have lemma1 : v1 = v2 := by omega
+          rewrite [lemma1] at p1
+          simp
+          exact lemma1
+        simp at beq_true
+        have lemma_tsp_hash_eq := TypeSpec.hash_eq item₂ item₂_₂ beq_true.left
+        have lemma_tst_hash_eq := TypeStack.hash_eq
+
+
+
+
+
+
+
 
 
   theorem TypeSpec.hash_eq
