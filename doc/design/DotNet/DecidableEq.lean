@@ -160,13 +160,17 @@ mutual
     have lemma_typeSpec_hash (tsp₀: TypeSpec) : Hashable.hash tsp₀ = TypeSpec.hash tsp₀ := by rfl
     unfold TypeStack.beqAux at beq_true
     cases tst1 with
-    | alloc td1 =>
-      simp_all
-      match td1.arity, tst2 with
-      | _, .alloc td2 =>
-        sorry
-      | _, .push rc₂ pred₂ item₂ =>
-        sorry
+    | alloc td1₁ =>
+      simp at beq_true
+      split at beq_true
+      next _ _ td2₁ index_eq₁ heq₁ =>
+        simp at beq_true
+        rewrite [beq_true.symm] at heq₁
+        apply heq₁.symm.elim -- Note: 왜 HEq를 최대한 사용하지 말라는지, 뼈저리게 느꼈다...'꼴 맞추기'가 이렇게나 어려울 줄이야;;
+        rfl
+      next =>
+        contradiction
+
     | push rc₂ pred₂ item₂ =>
       sorry
       /-
