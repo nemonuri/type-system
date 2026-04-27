@@ -9,9 +9,27 @@ structure TypeDef where
   arity : Nat
   deriving DecidableEq, Hashable
 
-
 abbrev Pos := { x : Nat // 0 < x }
 
+namespace Pos
+
+def mk (x: Nat) (p: 0 < x) : Pos := ⟨x, p⟩
+
+end Pos
+
+
+namespace Api
+
+def System_Tuple : TypeDef := TypeDef.mk "System.Tuple" 0
+
+def System_Tuple' (arity: Pos) : TypeDef :=
+  let name := "System.Tuple`" ++ (toString arity.val)
+  TypeDef.mk name arity.val
+
+end Api
+
+instance : Inhabited TypeDef where
+  default := Api.System_Tuple
 
 mutual
   inductive TypeStack : (remainedCount: Nat) → Type 0 where
@@ -29,6 +47,136 @@ end
 
 namespace TypeStack
 
+def default (rc: Nat) : TypeStack rc :=
+  let rc_pos := rc > 0
+  Decidable.byCases
+    (fun h1: rc_pos =>
+      TypeStack.alloc (Api.System_Tuple' (Pos.mk rc h1)))
+    (fun h2: ¬rc_pos =>
+      have lemma1 : Api.System_Tuple.arity = rc := by
+        calc
+          Api.System_Tuple.arity = 0 := by rfl
+          0 = rc := by omega
+      have lemma2 := congrArg TypeStack lemma1
+      TypeStack.alloc Api.System_Tuple
+      |> cast lemma2)
+
+
+
+
+abbrev Indexless := Sigma TypeStack
+
+namespace Indexless
+
+def ofIndexed {rc: Nat} (tst: TypeStack rc) : Indexless := Sigma.mk rc tst
+
+def remainedCount (tst: Indexless) : Nat := tst.fst
+
+def toIndexed (tst: Indexless) : TypeStack tst.remainedCount := tst.snd
+
+theorem eq_imp_indexed_heq
+  {tst1 tst2: Indexless} (is_eq: tst1 = tst2)
+  : (tst1.remainedCount = tst2.remainedCount) ∧ (tst1.toIndexed ≍ tst2.toIndexed) := by
+  let ⟨_,_⟩ := tst1
+  let ⟨_,_⟩ := tst2
+  constructor
+  · injection is_eq
+  · injection is_eq
+
+/-
+theorem indexed_heq_imp_eq
+  {rc1 rc2: Nat} {tst1: TypeStack rc1} {tst2:TypeStack rc2}
+  (is_heq: tst1 ≍ tst2)
+  : (Indexless.ofIndexed tst1) = (Indexless.ofIndexed tst2) := by
+  let getRc {rc₀} (tst₀: TypeStack rc₀) := rc₀
+  have lemma1 {rc₀} (tst₀: TypeStack rc₀) : rc₀ = getRc tst₀ := by rfl
+  let asdf := is_heq.ndrecOn (lemma1 tst1)
+-/
+
+
+  --have lemma1 :=
+def default (rc: Nat) : Indexless := TypeStack.default rc |> ofIndexed
+
+@[simp]
+theorem default_eq_sigma (rc: Nat) : default rc = Sigma.mk rc (TypeStack.default rc) := by rfl
+
+theorem default_eq_imp_rc_eq
+  {rc1 rc2: Nat}
+  (default_eq: (default rc1) = (default rc2))
+  : rc1 = rc2 := by
+  simp at default_eq
+  exact default_eq.left
+
+
+
+
+end Indexless
+
+
+set_option pp.proofs true in
+#print HEq.rec
+
+
+
+--def heq_rec {rc1 rc2: Nat} := (HEq (TypeStack rc1) (TypeStack rc2)).rec
+
+
+
+/-
+theorem heq_imp_rc_eq
+  {rc1 rc2: Nat} {tst1: TypeStack rc1} {tst2:TypeStack rc2}
+  (is_heq: tst1 ≍ tst2)
+  : rc1 = rc2 := by
+  have lemma1 := is_heq |> type_eq_of_heq
+  match rc1, rc2 with
+  | 0, n + 1 =>
+  --have heq_motive {rc₀} (tst₀: TypeStack rc₀) (heq₀: tst1 ≍ tst₀) : rc1 = rc₀ := by
+-/
+
+
+
+
+
+
+
+/-
+  let lhs := TypeStack.default rc1
+  let rhs := TypeStack.default rc2
+  have default_heq₁ : lhs ≍ rhs := default_heq
+  unfold lhs at default_heq₁
+  unfold TypeStack.default at default_heq₁
+  unfold Decidable.byCases at default_heq₁
+  simp_all
+  split at default_heq₁
+  next rc1_pos _ =>
+    unfold rhs TypeStack.default Decidable.byCases at default_heq₁
+    simp_all
+    split at default_heq₁
+-/
+
+
+end TypeStack
+
+
+
+
+
+
+
+
+
+instance {rc: Nat} : Inhabited (TypeStack rc) where
+  default := TypeStack.default rc
+
+namespace TypeStack
+
+def toIndex {rc} (_: TypeStack rc) := rc
+
+def ofIndex (rc: Nat) : TypeStack rc := Inhabited.default
+
+theorem ofIndex_toIndex (rc: Nat) : (ofIndex rc).toIndex = rc := by rfl
+
+
 @[expose]
 abbrev pushAuto {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec) : TypeStack (rc.val - 1) :=
   TypeStack.push rc tst tsp
@@ -44,6 +192,19 @@ theorem typeDef_is_invariant {rc: Pos} (tst: TypeStack rc) (tsp: TypeSpec)
   rfl
 
 def capacity {rc: Nat} (tst: TypeStack rc) : Nat := tst.typeDef.arity
+
+
+#print TypeStack.noConfusion
+
+theorem type_eq_imp_rc_eq {rc1 rc2: Nat} (type_eq: TypeStack rc1 = TypeStack rc2) : rc1 = rc2 := by
+  have lemma1 := ofIndex_toIndex rc1
+  have lemma2 := ofIndex_toIndex rc2
+  unfold TypeStack.ofIndex at lemma1 lemma2
+
+
+
+
+
 
 
 

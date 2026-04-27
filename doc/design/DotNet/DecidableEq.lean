@@ -33,6 +33,22 @@ instance : PartialEquivBEq Pos where
 
 instance : EquivBEq Pos := EquivBEq.mk
 
+
+theorem Pos.minus_one_eq_imp_eq (pos1 pos2: Pos) (minus_one_eq: pos1.val - 1 = pos2.val - 1) : pos1 = pos2 := by
+  let ⟨v1, p1⟩ := pos1
+  let ⟨v2, p2⟩ := pos2
+  simp_all
+  omega
+
+@[simp]
+theorem Pos.minus_one_eq_iff_eq (pos1 pos2: Pos) : (pos1.val - 1 = pos2.val - 1) ↔ (pos1 = pos2) := by
+  have lemma_mp := minus_one_eq_imp_eq pos1 pos2
+  have lemma_mpr (p: (pos1 = pos2)) : (pos1.val - 1 = pos2.val - 1) := by rw [p]
+  have lemma1 := Iff.intro lemma_mp lemma_mpr
+  exact lemma1
+
+
+
 end Pos
 
 
@@ -52,8 +68,8 @@ end TypeDef
 
 mutual
 
-  private def TypeStack.beqAux
-    {rc1: Nat} (tst1: TypeStack rc1) {rc2: Nat} (tst2: TypeStack rc2) : Bool :=
+  def TypeStack.beq_at
+    {rc1 rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
     match tst1 with
     | .alloc td1 =>
       match tst2 with
@@ -63,19 +79,19 @@ mutual
       match tst2 with
       | .alloc _ => .false
       | .push prc2 pred2 item2 =>
-        TypeSpec.beq item1 item2 && TypeStack.beqAux pred1 pred2
-
-  def TypeStack.beq {rc: Nat} (tst1 tst2: TypeStack rc) := TypeStack.beqAux tst1 tst2
+        TypeSpec.beq item1 item2 && TypeStack.beq_at pred1 pred2
 
   def TypeSpec.beq
-    (typeSpec1 typeSpec2: TypeSpec)
+    (tsp1 tsp2: TypeSpec)
     : Bool :=
-    match typeSpec1, typeSpec2 with
+    match tsp1, tsp2 with
     | .var, .var => .true
-    | .con tc1, .con tc2 => TypeStack.beq tc1 tc2
+    | .con tst1, .con tst2 => TypeStack.beq_at tst1 tst2
     | _, _ => .false
 
 end
+
+  def TypeStack.beq {rc} (tst1 tst2: TypeStack rc) := TypeStack.beq_at tst1 tst2
 
 mutual
 
@@ -138,14 +154,13 @@ mutual
   theorem TypeStack.rfl_at {rc: Nat} (tst: TypeStack rc) : tst == tst := by
     have lemma_beq : (tst == tst) = (tst.beq tst) := by rfl
     rw [lemma_beq]
-    unfold TypeStack.beq TypeStack.beqAux
+    unfold TypeStack.beq TypeStack.beq_at
     cases tst with
     | alloc td₁ => simp
     | push rc₁ pred₁ item₁ =>
       simp
       have lemma_left : item₁.beq item₁ := TypeSpec.rfl_at item₁
       have lemma_right : pred₁.beq pred₁ := TypeStack.rfl_at pred₁
-      unfold TypeStack.beq at lemma_right
       trivial
 
   theorem TypeSpec.rfl_at (tsp: TypeSpec) : tsp == tsp := by
@@ -172,7 +187,44 @@ instance : ReflBEq TypeSpec where rfl := TypeSpec.rfl
 
 mutual
 
-  --theorem TypeStack.eq_of_beq
+  theorem TypeStack.eq_of_beq_at
+    {rc1 rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) (is_beq_at: tst1.beq_at tst2)
+    : tst1 ≍ tst2 := by
+    have lemma1 := show tst1.beq_at tst2 from is_beq_at
+    unfold TypeStack.beq_at at lemma1
+    split at lemma1
+    next td₁ =>
+      split at lemma1
+      next td₁_₁ _ heq₁_₁ =>
+        simp at lemma1
+        rewrite [lemma1]
+        rfl
+      next =>
+        contradiction
+    next rc₂ pred₂ item₂ =>
+      split at lemma1
+      next =>
+        contradiction
+      next rc₂_₂ pred₂_₂ item₂_₂ =>
+        simp at lemma1
+        obtain ⟨lemma_item_beq, lemma_pred_beq⟩ := lemma1
+        have lemma_item_eq : item₂ = item₂_₂ := TypeSpec.eq_of_beq item₂ item₂_₂ lemma_item_beq
+        have lemma_pred_eq : pred₂ ≍ pred₂_₂ := TypeStack.eq_of_beq_at pred₂ pred₂_₂ lemma_pred_beq
+        have lemma_rc_eq : rc₂ = rc₂_₂ := by
+          have lemma1 := lemma_pred_eq |> type_eq_of_heq
+          let ⟨v1, p1⟩ := rc₂
+          let ⟨v2, p2⟩ := rc₂_₂
+          simp_all
+
+
+        --have lemma_pred_eq :=
+
+
+  theorem TypeSpec.eq_of_beq (tsp1 tsp2: TypeSpec) (is_beq: tsp1 == tsp2) : tsp1 = tsp2 := by
+    sorry
+
+
+
 
 end
 
@@ -187,9 +239,8 @@ mutual
     : hash tst1 = hash tst2 := by
     have lemma_typeStack_beq
       {rc₀: Nat} (tst₀1 tst₀2: TypeStack rc₀)
-      : (tst₀1 == tst₀2) = (TypeStack.beqAux tst₀1 tst₀2) := by
+      : (tst₀1 == tst₀2) = (TypeStack.beq tst₀1 tst₀2) := by
       have lemma1 : (tst₀1 == tst₀2) = (TypeStack.beq tst₀1 tst₀2) := by rfl
-      unfold TypeStack.beq at lemma1
       exact lemma1
     rewrite [lemma_typeStack_beq tst1 tst2] at beq_true
     have lemma_typeStack_hash {rc₀: Nat} (tst₀ :TypeStack rc₀)
@@ -199,7 +250,7 @@ mutual
       : (tsp₀1 == tsp₀2) = (TypeSpec.beq tsp₀1 tsp₀2) := by
       rfl
     have lemma_typeSpec_hash (tsp₀: TypeSpec) : Hashable.hash tsp₀ = TypeSpec.hash tsp₀ := by rfl
-    unfold TypeStack.beqAux at beq_true
+    unfold TypeStack.beq at beq_true
     cases tst1 with
     | alloc td1₁ =>
       simp at beq_true
