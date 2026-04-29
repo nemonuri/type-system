@@ -1,6 +1,7 @@
 module
 
 public import DotNet.Basic
+public import DotNet.Lemmas
 
 public section
 
@@ -62,14 +63,27 @@ instance : LawfulHashable TypeDef := inferInstance
 
 instance : EquivBEq TypeDef := inferInstance
 
-#print instEquivBEqTypeDef
-
 end TypeDef
+
+-- Note: 왜 함수 안에 직접 `sizeOf` 를 사용할 수 없는건데??
+@[expose]
+def TypeSpec.mapConOrDefault.{u} {α: Sort u}
+  (tsp: TypeSpec)
+  (mapFunc: TypeStack 0 → α) (fallback: α)
+  : α :=
+  match tsp with
+  | .var => fallback
+  | .con tst => mapFunc tst
+
 
 mutual
 
-  def TypeStack.beq_at
-    {rc1 rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) : Bool :=
+open TypeStack
+
+  def TypeStack.Indexless.beq
+    (tstI1: Indexless) (tstI2: Indexless) : Bool :=
+    let ⟨rc1, tst1⟩ := tstI1
+    let ⟨rc2, tst2⟩ := tstI2
     match tst1 with
     | .alloc td1 =>
       match tst2 with
@@ -79,100 +93,166 @@ mutual
       match tst2 with
       | .alloc _ => .false
       | .push prc2 pred2 item2 =>
-        TypeSpec.beq item1 item2 && TypeStack.beq_at pred1 pred2
+        TypeSpec.beq item1 item2 &&
+        TypeStack.Indexless.beq pred1.toIndexless pred2.toIndexless
+  termination_by
+    (sizeOf tstI1.indexed, 0)
+  decreasing_by
+    unfold TypeSpec.mapConOrDefault
+    next =>
+      split
+      next =>
+        simp
+        decreasing_with omega
+      next =>
+        simp
+        decreasing_with omega
+    next =>
+      simp
+      unfold TypeStack.toIndexless -- Note: '보이지 않는 Term' 에서 다름이 있었다..!
+      decreasing_with
+        omega
+
 
   def TypeSpec.beq
     (tsp1 tsp2: TypeSpec)
     : Bool :=
     match tsp1, tsp2 with
     | .var, .var => .true
-    | .con tst1, .con tst2 => TypeStack.beq_at tst1 tst2
+    | .con tst1, .con tst2 => TypeStack.Indexless.beq tst1.toIndexless tst2.toIndexless
     | _, _ => .false
+  termination_by
+    (tsp1.mapConOrDefault sizeOf 0, 1)
+  decreasing_by
+    simp only [toIndexless_indexed_eq]
+    decreasing_with omega
 
 end
 
-  def TypeStack.beq {rc} (tst1 tst2: TypeStack rc) := TypeStack.beq_at tst1 tst2
-
-mutual
-
-  def TypeStack.hash
-    {rc: Nat} (typeCon: TypeStack rc)
-    : UInt64 :=
-    open TypeStack in
-    match typeCon with
-    | .alloc td => Hashable.hash td
-    | .push _ pred item => mixHash (TypeSpec.hash item) (TypeStack.hash pred)
-
-  def TypeSpec.hash
-    (typeSpec: TypeSpec)
-    : UInt64 :=
-    match typeSpec with
-    | .var => 0
-    | .con tst => TypeStack.hash tst
-
-end
-
-instance {rc: Nat} : BEq (TypeStack rc) where
-  beq tc1 tc2 := TypeStack.beq tc1 tc2
+instance : BEq TypeStack.Indexless where
+  beq := TypeStack.Indexless.beq
 
 instance : BEq TypeSpec where
   beq := TypeSpec.beq
 
-instance {arity: Nat} : Hashable (TypeStack arity) where
-  hash tc := TypeStack.hash tc
+
+mutual
+
+
+open TypeStack
+
+  def TypeStack.Indexless.hash
+    (tstI: Indexless)
+    : UInt64 :=
+    let ⟨_, tst⟩ := tstI
+    match tst with
+    | .alloc td => Hashable.hash td
+    | .push _ pred item => mixHash (TypeSpec.hash item) (TypeStack.Indexless.hash pred.toIndexless)
+  termination_by
+    (sizeOf tstI.indexed, 0)
+  decreasing_by
+    unfold TypeSpec.mapConOrDefault
+    next =>
+      split
+      next => simp; decreasing_with omega
+      next =>
+        simp [Nat.add_assoc_symm]
+        decreasing_with
+          omega
+    next =>
+      simp
+      unfold TypeStack.toIndexless
+      decreasing_with
+        omega
+
+
+  def TypeSpec.hash
+    (tsp: TypeSpec)
+    : UInt64 :=
+    match tsp with
+    | .var => 0
+    | .con tst => TypeStack.Indexless.hash tst.toIndexless
+  termination_by
+    (tsp.mapConOrDefault sizeOf 0, 1)
+  decreasing_by
+    simp
+    decreasing_with omega
+
+end
+
+instance : Hashable TypeStack.Indexless where
+  hash := TypeStack.Indexless.hash
 
 instance : Hashable TypeSpec where
   hash := TypeSpec.hash
 
-namespace TypeStack
-
--- Note: hash 함수의 같음을 비교하기 위해서는, case 별 simp 를 먼저 정의해 두는 것이 편하다.
-
-@[simp]
-theorem hash_alloc (td: TypeDef) : (TypeStack.alloc td).hash = Hashable.hash td := by rfl
-
-@[simp]
-theorem hash_push {rc: Pos} (pred: TypeStack rc.val) (item: TypeSpec)
-  : (pred.pushAuto item).hash = mixHash (TypeSpec.hash item) (TypeStack.hash pred) := by
-  rfl
-
-end TypeStack
-
-namespace TypeSpec
-
-@[simp]
-theorem hash_var : TypeSpec.var.hash = 0 := by rfl
-
-@[simp]
-theorem hash_con (tst: TypeStack.Initialized) : (TypeSpec.con tst).hash = TypeStack.hash tst := by rfl
-
-end TypeSpec
-
 
 mutual
 
-  theorem TypeStack.rfl_at {rc: Nat} (tst: TypeStack rc) : tst == tst := by
-    have lemma_beq : (tst == tst) = (tst.beq tst) := by rfl
-    rw [lemma_beq]
-    unfold TypeStack.beq TypeStack.beq_at
+open TypeStack
+
+  theorem TypeStack.Indexless.rfl_at (tstI: Indexless) : tstI == tstI := by
+    suffices goal : Indexless.beq tstI tstI from by
+      exact goal
+    obtain ⟨rc, tst⟩ := tstI
+    unfold Indexless.beq
     cases tst with
-    | alloc td₁ => simp
-    | push rc₁ pred₁ item₁ =>
+    | alloc td => simp
+    | push rc pred item =>
       simp
-      have lemma_left : item₁.beq item₁ := TypeSpec.rfl_at item₁
-      have lemma_right : pred₁.beq pred₁ := TypeStack.rfl_at pred₁
-      trivial
+      exact And.intro (TypeSpec.rfl_at item) (TypeStack.Indexless.rfl_at pred.toIndexless)
+  termination_by
+    (sizeOf tstI.indexed, 0)
+  decreasing_by
+    unfold TypeSpec.mapConOrDefault
+    next =>
+      split
+      next =>
+        simp
+        decreasing_with omega
+      next =>
+        simp [Nat.add_assoc_symm]
+        decreasing_with omega
+    next =>
+      simp
+      unfold TypeStack.toIndexless
+      decreasing_with omega
+
+
+
+    --unfold TypeSpec.mapConOrDefault
+    --have lemma1 {rc₀} := TypeStack.sizeOf_gt_zero
+/-
+    next prc2 pred2 item2 rc_prc2_rel heq₁ =>
+      have lemma1 := type_eq_of_heq heq₁
+      cases item2 with
+      | var =>
+        simp
+        apply Prod.Lex.left
+        rename (TypeStack rc) => tst₁
+        exact tst₁.sizeOf_gt_zero
+      | con tst₂ =>
+        skip
+-/
+
+
+
 
   theorem TypeSpec.rfl_at (tsp: TypeSpec) : tsp == tsp := by
-    have lemma_beq : (tsp == tsp) = (tsp.beq tsp) := by rfl
-    rw [lemma_beq]
+    suffices goal : tsp.beq tsp from by
+      exact goal
     unfold TypeSpec.beq
     cases tsp with
     | var => simp
     | con tst =>
       simp
-      have lemma1 : tst.beq tst := TypeStack.rfl_at tst
+      have lemma1 := TypeStack.Indexless.rfl_at tst.toIndexless
       exact lemma1
+  termination_by
+    (tsp.mapConOrDefault sizeOf 0, 1)
+  decreasing_by
+    simp
+    decreasing_with omega
 
 end
 
@@ -229,9 +309,7 @@ mutual
 end
 
 
-
-
-
+/-
 mutual
 
   theorem TypeStack.hash_eq
@@ -326,6 +404,7 @@ mutual
 
 
 end
+-/
 
 end DotNet
 
