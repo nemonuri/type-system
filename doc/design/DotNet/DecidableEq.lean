@@ -110,8 +110,7 @@ open TypeStack
     next =>
       simp
       unfold TypeStack.toIndexless -- Note: '보이지 않는 Term' 에서 다름이 있었다..!
-      decreasing_with
-        omega
+      decreasing_with omega
 
 
   def TypeSpec.beq
@@ -157,13 +156,11 @@ open TypeStack
       next => simp; decreasing_with omega
       next =>
         simp [Nat.add_assoc_symm]
-        decreasing_with
-          omega
+        decreasing_with omega
     next =>
       simp
       unfold TypeStack.toIndexless
-      decreasing_with
-        omega
+      decreasing_with omega
 
 
   def TypeSpec.hash
@@ -219,25 +216,6 @@ open TypeStack
       decreasing_with omega
 
 
-
-    --unfold TypeSpec.mapConOrDefault
-    --have lemma1 {rc₀} := TypeStack.sizeOf_gt_zero
-/-
-    next prc2 pred2 item2 rc_prc2_rel heq₁ =>
-      have lemma1 := type_eq_of_heq heq₁
-      cases item2 with
-      | var =>
-        simp
-        apply Prod.Lex.left
-        rename (TypeStack rc) => tst₁
-        exact tst₁.sizeOf_gt_zero
-      | con tst₂ =>
-        skip
--/
-
-
-
-
   theorem TypeSpec.rfl_at (tsp: TypeSpec) : tsp == tsp := by
     suffices goal : tsp.beq tsp from by
       exact goal
@@ -256,155 +234,94 @@ open TypeStack
 
 end
 
-theorem TypeStack.rfl {rc} {tst: TypeStack rc} : tst == tst := TypeStack.rfl_at tst
+instance : ReflBEq TypeStack.Indexless where
+  rfl {a} := TypeStack.Indexless.rfl_at a
 
-theorem TypeSpec.rfl {tsp: TypeSpec} : tsp == tsp := TypeSpec.rfl_at tsp
-
-instance {rc: Nat} : ReflBEq (TypeStack rc) where rfl := TypeStack.rfl
-
-instance : ReflBEq TypeSpec where rfl := TypeSpec.rfl
+instance : ReflBEq TypeSpec where
+  rfl {a} := TypeSpec.rfl_at a
 
 
 mutual
 
-  theorem TypeStack.eq_of_beq_at
-    {rc1 rc2: Nat} (tst1: TypeStack rc1) (tst2: TypeStack rc2) (is_beq_at: tst1.beq_at tst2)
-    : tst1 ≍ tst2 := by
-    have lemma1 := show tst1.beq_at tst2 from is_beq_at
-    unfold TypeStack.beq_at at lemma1
-    split at lemma1
-    next td₁ =>
-      split at lemma1
-      next td₁_₁ _ heq₁_₁ =>
-        simp at lemma1
-        rewrite [lemma1]
-        rfl
-      next =>
-        contradiction
-    next rc₂ pred₂ item₂ =>
-      split at lemma1
-      next =>
-        contradiction
-      next rc₂_₂ pred₂_₂ item₂_₂ =>
-        simp at lemma1
-        obtain ⟨lemma_item_beq, lemma_pred_beq⟩ := lemma1
-        have lemma_item_eq : item₂ = item₂_₂ := TypeSpec.eq_of_beq item₂ item₂_₂ lemma_item_beq
-        have lemma_pred_eq : pred₂ ≍ pred₂_₂ := TypeStack.eq_of_beq_at pred₂ pred₂_₂ lemma_pred_beq
-        have lemma_rc_eq : rc₂ = rc₂_₂ := by
-          have lemma1 := lemma_pred_eq |> type_eq_of_heq
-          let ⟨v1, p1⟩ := rc₂
-          let ⟨v2, p2⟩ := rc₂_₂
-          simp_all
+open TypeStack
 
-
-        --have lemma_pred_eq :=
-
-
-  theorem TypeSpec.eq_of_beq (tsp1 tsp2: TypeSpec) (is_beq: tsp1 == tsp2) : tsp1 = tsp2 := by
-    sorry
-
-
-
-
-end
-
-
-/-
-mutual
-
-  theorem TypeStack.hash_eq
-    {rc: Nat} (tst1 tst2: TypeStack rc) (beq_true: (tst1 == tst2) = true)
-    : hash tst1 = hash tst2 := by
-    have lemma_typeStack_beq
-      {rc₀: Nat} (tst₀1 tst₀2: TypeStack rc₀)
-      : (tst₀1 == tst₀2) = (TypeStack.beq tst₀1 tst₀2) := by
-      have lemma1 : (tst₀1 == tst₀2) = (TypeStack.beq tst₀1 tst₀2) := by rfl
-      exact lemma1
-    rewrite [lemma_typeStack_beq tst1 tst2] at beq_true
-    have lemma_typeStack_hash {rc₀: Nat} (tst₀ :TypeStack rc₀)
-      : hash tst₀ = TypeStack.hash tst₀ := by
-      rfl
-    have lemma_typeSpec_beq (tsp₀1 tsp₀2: TypeSpec)
-      : (tsp₀1 == tsp₀2) = (TypeSpec.beq tsp₀1 tsp₀2) := by
-      rfl
-    have lemma_typeSpec_hash (tsp₀: TypeSpec) : Hashable.hash tsp₀ = TypeSpec.hash tsp₀ := by rfl
-    unfold TypeStack.beq at beq_true
+  theorem TypeStack.Indexless.eq_of_beq
+    {tst1I tst2I: Indexless} (is_beq: tst1I == tst2I)
+    : tst1I = tst2I := by
+    have is_beq0 : Indexless.beq tst1I tst2I := by exact is_beq
+    obtain ⟨rc1, tst1⟩ := tst1I
+    obtain ⟨rc2, tst2⟩ := tst2I
+    simp
+    unfold Indexless.beq at is_beq0
     cases tst1 with
-    | alloc td1₁ =>
-      simp at beq_true
-      split at beq_true
-      next _ _ td2₁_₁ _ heq₁_₁ =>
-        simp at beq_true
-        rewrite [beq_true.symm] at heq₁_₁
-        apply heq₁_₁.symm.elim -- Note: 왜 HEq를 최대한 사용하지 말라는지, 뼈저리게 느꼈다...'꼴 맞추기'가 이렇게나 어려울 줄이야;;
-        rfl
-      next =>
-        contradiction
-    | push rc₂ pred₂ item₂ =>
-      simp at beq_true
-      split at beq_true
-      next =>
-        contradiction
-      next _ rc₂_₂ pred₂_₂ item₂_₂ index_eq₂_₂ heq₂_₂ =>
-        have lemma_rc_eq : rc₂_₂ = rc₂ := by
-          let ⟨v1, p1⟩ := rc₂_₂
-          let ⟨v2, p2⟩ := rc₂
-          simp at index_eq₂_₂
-          have lemma1 : v1 = v2 := by omega
-          rewrite [lemma1] at p1
-          simp
-          exact lemma1
-        suffices goal₂_₂ : TypeStack.push rc₂_₂ pred₂_₂ item₂_₂ ≍ TypeStack.push rc₂ pred₂ item₂ from by
-          have lemma1 := HEq.trans heq₂_₂ goal₂_₂ |> HEq.symm
-          apply lemma1.elim
-          rfl
-        subst_eqs
+    | alloc _ =>
+      cases tst2 with
+      | alloc _ =>
         simp_all
-        /-
-        goal :=
-        item₂.beq item₂_₂ = true ∧ pred₂.beqAux pred₂_₂ = true ⊢ pred₂_₂ = pred₂ ∧ item₂_₂ = item₂
-
-        ...결국 item₂ 과 pred₂ 가, 'LawfulBEq' 라는 것을 증명해야 하네...??
-        -/
-        sorry
-
-
-
-        --have lemma_tsp_hash_eq := TypeSpec.hash_eq item₂ item₂_₂ beq_true.left
-        --have lemma_tst_hash_eq
-        --have lemma_tst_hash_eq := TypeStack.hash_eq
-
-
-
-
-
-
-
-
-
-  theorem TypeSpec.hash_eq
-    (tsp1 tsp2: TypeSpec) (beq_true: (tsp1 == tsp2) = true)
-    : hash tsp1 = hash tsp2 := by
-    have lemma1 : (tsp1 == tsp2) = (TypeSpec.beq tsp1 tsp2) := by rfl
-    rewrite [lemma1] at beq_true
-    unfold TypeSpec.beq at beq_true
-    match tsp1, tsp2 with
-    | .var, .var => simp
-    | .con tst1, .con tst2 =>
-      have lemma2 := TypeStack.hash_eq tst1 tst2
-      have lemma3 (tsp: TypeSpec) : hash tsp = tsp.hash := by rfl
-      by_cases ((tst1 == tst2) = true)
-      next if_pos =>
-        simp_all
-        exact lemma2
-      next if_nes =>
-        have lemma4 : (tst1 == tst2) = (tst1.beq tst2) := by rfl
-        rewrite [lemma4] at if_nes
+        rw [is_beq0]
+      | push _ _ _ =>
         contradiction
+    | push prc1 pred1 item1 =>
+      cases tst2 with
+      | alloc _ =>
+        contradiction
+      | push prc2 pred2 item2 =>
+        simp at is_beq0
+        obtain ⟨tsp_beq, tst_beq⟩ := is_beq0
+        have lemma2 : pred1.toIndexless = pred2.toIndexless := TypeStack.Indexless.eq_of_beq (by exact tst_beq)
+        have lemma1 : item1 = item2 := TypeSpec.eq_of_beq (by exact tsp_beq)
+        unfold TypeStack.toIndexless at lemma2
+        simp at lemma2
+        obtain ⟨prc_val_eq, pred_eq⟩ := lemma2
+        simp [prc_val_eq]
+        have prc_eq := Subtype.ext prc_val_eq
+        congr
+  termination_by
+    (sizeOf tst1I.indexed, 0)
+  decreasing_by
+    next _ heq2 =>
+      split at is_beq0
+      next _ rc2 tst1 tstI_eq =>
+        simp [*, Prod.lex_def] at *
+        obtain ⟨lhs, rhs⟩ := tstI_eq
 
+        --simp_all
+    --unfold TypeSpec.mapConOrDefault
+
+
+
+
+
+
+
+  theorem TypeSpec.eq_of_beq
+    {tsp1 tsp2: TypeSpec} (is_beq: tsp1 == tsp2) : tsp1 = tsp2 := by
+    have is_beq0 : TypeSpec.beq tsp1 tsp2 := by exact is_beq
+    unfold TypeSpec.beq at is_beq0
+    cases tsp1 with
+    | var =>
+      cases tsp2 with
+      | var => rfl
+      | con _ => contradiction
+    | con tst1 =>
+      cases tsp2 with
+      | var => contradiction
+      | con tst2 =>
+        simp at is_beq0
+        have lemma1 : tst1.toIndexless = tst2.toIndexless := TypeStack.Indexless.eq_of_beq (by exact is_beq0)
+        unfold TypeStack.toIndexless at lemma1
+        simp at lemma1
+        rw [lemma1]
+  termination_by
+    (tsp1.mapConOrDefault sizeOf 0, 1)
+  decreasing_by
+    simp_all
+    decreasing_with omega
 
 end
--/
+
+
+
 
 end DotNet
 
