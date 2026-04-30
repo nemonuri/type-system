@@ -1,7 +1,6 @@
 module
 
 public import DotNet.Basic
-public import DotNet.Lemmas
 
 public section
 
@@ -216,7 +215,7 @@ open TypeStack
         simp
         decreasing_with omega
       next =>
-        simp [Nat.add_assoc_symm]
+        simp [←Nat.add_assoc]
         decreasing_with omega
     next =>
       simp
@@ -320,6 +319,23 @@ end
 
 end extra_simp
 
+instance : LawfulBEq TypeStack.Indexless where
+  eq_of_beq := TypeStack.Indexless.eq_of_beq
+
+instance : LawfulHashable TypeStack.Indexless := inferInstance
+
+instance : EquivBEq TypeStack.Indexless := inferInstance
+
+
+instance : LawfulBEq TypeSpec where
+  eq_of_beq := TypeSpec.eq_of_beq
+
+instance : LawfulHashable TypeSpec := inferInstance
+
+instance : EquivBEq TypeSpec := inferInstance
+
+set_option pp.proofs true in
+#print TypeStack.Indexless.eq_of_beq._mutual
 
 end DotNet
 

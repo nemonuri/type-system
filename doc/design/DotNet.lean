@@ -1,4 +1,4 @@
 module
 
 public import DotNet.Basic
-public import DotNet.DecidableEq
+public import DotNet.LawfulBEq
