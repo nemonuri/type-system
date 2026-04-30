@@ -267,13 +267,34 @@ structure Indexless where
   indexed : TypeStack remainedCount
 
 @[expose]
-def toIndexless {rc: Nat} (tst: TypeStack rc) : Indexless := ⟨rc, tst⟩
+abbrev toIndexless {rc: Nat} (tst: TypeStack rc) : Indexless := ⟨rc, tst⟩
 
-@[simp]
 theorem toIndexless_indexed_eq {rc: Nat} (tst: TypeStack rc) : tst.toIndexless.indexed = tst := by rfl
 
-@[simp]
 theorem toIndexless_remainedCount_eq {rc: Nat} (tst: TypeStack rc) : tst.toIndexless.remainedCount = rc := by rfl
+
+namespace Indexless
+
+def toSigma (tstI: Indexless) : Sigma TypeStack :=
+  let ⟨rc, tst⟩ := tstI
+  Sigma.mk rc tst
+
+def toIndexedSum (tstI: Indexless)
+  : match tstI with
+    | ⟨_, .alloc td⟩ => TypeStack td.arity
+    | ⟨_, .push prc _ _⟩ => TypeStack (prc.val - 1)
+  :=
+  match tstI with
+  | ⟨_, .alloc td⟩ => TypeStack.alloc td
+  | ⟨_, .push prc pred item⟩ => TypeStack.push prc pred item
+
+
+
+end Indexless
+
+
+
+
 
 end TypeStack
 
